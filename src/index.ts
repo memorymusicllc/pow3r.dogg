@@ -69,6 +69,7 @@ export default {
 
         // Fallback: serve inline dashboard
         if (url.pathname === '/dashboard' || url.pathname === '/dashboard/') {
+          const apiBase = url.origin;
           return new Response(
             `<!DOCTYPE html>
 <html lang="en" class="dark">
@@ -77,24 +78,27 @@ export default {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Pow3r Defender Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = { darkMode: 'class' }
-  </script>
+  <script>tailwind.config = { darkMode: 'class' }</script>
   <style>
     body { background: #0a0a0a; color: #e5e5e5; font-family: system-ui, sans-serif; }
     .card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 12px; padding: 1.5rem; max-width: 520px; width: 100%; }
-    .btn { background: #3b82f6; color: white; padding: 0.75rem 1.5rem; border-radius: 8px; border: none; cursor: pointer; font-weight: 500; }
+    .btn { background: #3b82f6; color: white; padding: 0.75rem 1.5rem; border-radius: 8px; border: none; cursor: pointer; font-weight: 500; transition: background 0.2s; }
     .btn:hover { background: #2563eb; }
+    .btn-secondary { background: #2a2a2a; }
     .input { background: #0a0a0a; border: 1px solid #2a2a2a; color: #e5e5e5; padding: 0.75rem; border-radius: 8px; width: 100%; }
     .input:focus { outline: none; border-color: #3b82f6; }
     .nav-bottom { position: fixed; bottom: 0; left: 0; right: 0; background: #1a1a1a; border-top: 1px solid #2a2a2a; padding: 0.75rem; display: flex; justify-content: space-around; z-index: 1000; }
     @media (min-width: 1024px) { .nav-bottom { left: 0; top: 0; bottom: 0; width: 80px; flex-direction: column; border-top: none; border-right: 1px solid #2a2a2a; } }
-    .nav-item { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; padding: 0.5rem; cursor: pointer; color: #666; text-decoration: none; }
+    .nav-item { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; padding: 0.5rem; cursor: pointer; color: #666; text-decoration: none; transition: color 0.2s; }
     .nav-item.active { color: #3b82f6; }
+    .nav-item:hover { color: #3b82f6; }
+    .nav-item span { font-size: 0.75rem; }
     .content { padding: 1rem; padding-bottom: 100px; }
     @media (min-width: 1024px) { .content { margin-left: 80px; padding-bottom: 1rem; } }
     .page { display: none; }
     .page.active { display: block; }
+    .grid { display: grid; gap: 1rem; grid-template-columns: 1fr; }
+    @media (min-width: 768px) { .grid { grid-template-columns: repeat(2, 1fr); } }
   </style>
 </head>
 <body>
@@ -107,55 +111,79 @@ export default {
   <div class="content">
     <div id="dashboard" class="page active">
       <h1 class="text-2xl font-bold mb-6">Pow3r Defender Dashboard</h1>
-      <div class="card">
-        <h2 class="text-xl font-semibold mb-4">Quick Actions</h2>
-        <div class="space-y-3">
-          <button class="btn w-full" onclick="showPage('tracking')">Create Tracking Link</button>
-          <button class="btn w-full" onclick="showPage('attackers')">Add Attacker Info</button>
+      <div class="grid">
+        <div class="card">
+          <h2 class="text-xl font-semibold mb-4">Quick Actions</h2>
+          <div class="space-y-3">
+            <button class="btn w-full" onclick="showPage('tracking')">Create Tracking Link</button>
+            <button class="btn btn-secondary w-full" onclick="showPage('attackers')">Add Attacker Info</button>
+            <button class="btn btn-secondary w-full" onclick="showPage('investigations')">View Investigations</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2 class="text-xl font-semibold mb-4">System Status</h2>
+          <div class="space-y-2">
+            <div class="flex justify-between"><span>API Status</span><span id="api-status" class="text-green-400">Checking...</span></div>
+            <div class="flex justify-between"><span>Active Trackers</span><span id="active-trackers">0</span></div>
+            <div class="flex justify-between"><span>Monitored Attackers</span><span id="monitored-attackers">0</span></div>
+          </div>
         </div>
       </div>
     </div>
     <div id="tracking" class="page">
       <h1 class="text-2xl font-bold mb-6">Create Tracking Link</h1>
       <div class="card">
+        <h2 class="text-xl font-semibold mb-4">Generate Honeypot Redirect</h2>
         <form id="tracking-form" class="space-y-4">
-          <div><label class="block mb-2">Final URL</label><input type="url" id="final-url" class="input" required></div>
-          <div><label class="block mb-2">Tracking ID (Optional)</label><input type="text" id="tracking-id" class="input"></div>
-          <button type="submit" class="btn w-full">Generate Link</button>
+          <div><label class="block mb-2 text-sm font-medium">Final URL</label><input type="url" id="final-url" class="input" placeholder="https://example.com" required></div>
+          <div><label class="block mb-2 text-sm font-medium">Intermediate Domains (Optional)</label><input type="text" id="intermediate-domains" class="input" placeholder="domain1.com, domain2.com"></div>
+          <div><label class="block mb-2 text-sm font-medium">Tracking ID (Optional)</label><input type="text" id="tracking-id" class="input" placeholder="Auto-generated if empty"></div>
+          <button type="submit" class="btn w-full">Generate Tracking Link</button>
         </form>
         <div id="tracking-result" class="mt-4 hidden">
           <div class="bg-green-900/20 border border-green-500/50 rounded-lg p-4">
-            <h3 class="font-semibold mb-2">Link Created</h3>
-            <div class="flex gap-2"><input type="text" id="result-url" class="input flex-1" readonly><button onclick="copyToClipboard('result-url')" class="btn">Copy</button></div>
+            <h3 class="font-semibold mb-2">Tracking Link Created</h3>
+            <div class="space-y-2">
+              <div><label class="text-sm text-gray-400">Tracking ID:</label><p class="font-mono text-sm" id="result-tracking-id"></p></div>
+              <div class="flex gap-2"><input type="text" id="result-redirect-url" class="input flex-1 font-mono text-sm" readonly><button onclick="copyToClipboard('result-redirect-url')" class="btn">Copy</button></div>
+            </div>
           </div>
         </div>
       </div>
     </div>
     <div id="attackers" class="page">
       <h1 class="text-2xl font-bold mb-6">Manage Attackers</h1>
-      <div class="card">
+      <div class="card mb-4">
+        <h2 class="text-xl font-semibold mb-4">Add Attacker Information</h2>
         <form id="attacker-form" class="space-y-4">
-          <div><label class="block mb-2">Fingerprint</label><input type="text" id="fingerprint" class="input"></div>
-          <div><label class="block mb-2">IP Address</label><input type="text" id="ip" class="input"></div>
-          <div><label class="block mb-2">Phone</label><input type="tel" id="phone" class="input"></div>
-          <div><label class="block mb-2">User Agent</label><input type="text" id="useragent" class="input"></div>
+          <div><label class="block mb-2 text-sm font-medium">Fingerprint</label><input type="text" id="attacker-fingerprint" class="input" placeholder="Device fingerprint"></div>
+          <div><label class="block mb-2 text-sm font-medium">IP Address</label><input type="text" id="attacker-ip" class="input" placeholder="192.168.1.1"></div>
+          <div><label class="block mb-2 text-sm font-medium">Phone Number</label><input type="tel" id="attacker-phone" class="input" placeholder="+1234567890"></div>
+          <div><label class="block mb-2 text-sm font-medium">User Agent</label><input type="text" id="attacker-useragent" class="input" placeholder="Mozilla/5.0..."></div>
+          <div><label class="block mb-2 text-sm font-medium">Additional Metadata (JSON)</label><textarea id="attacker-metadata" class="input" rows="3" placeholder='{"notes": "Suspicious activity"}'></textarea></div>
           <button type="submit" class="btn w-full">Add Attacker</button>
         </form>
+      </div>
+      <div class="card">
+        <h2 class="text-xl font-semibold mb-4">Monitored Attackers</h2>
+        <div id="attackers-list" class="space-y-3"><p class="text-gray-400 text-center py-8">No attackers monitored yet</p></div>
       </div>
     </div>
     <div id="investigations" class="page">
       <h1 class="text-2xl font-bold mb-6">Investigations</h1>
-      <div class="card"><p class="text-gray-400">No active investigations</p></div>
+      <div class="card"><h2 class="text-xl font-semibold mb-4">Active Investigations</h2><div id="investigations-list" class="space-y-3"><p class="text-gray-400 text-center py-8">No active investigations</p></div></div>
     </div>
   </div>
   <script>
-    const API = '${API_BASE}';
-    let token = localStorage.getItem('pow3r_token') || '';
-    document.querySelectorAll('.nav-item').forEach(i => i.addEventListener('click', e => { e.preventDefault(); showPage(i.dataset.page); }));
-    function showPage(p) { document.querySelectorAll('.page, .nav-item').forEach(el => el.classList.remove('active')); document.getElementById(p).classList.add('active'); document.querySelector(\`[data-page="\${p}"]\`).classList.add('active'); }
-    document.getElementById('tracking-form').addEventListener('submit', async e => { e.preventDefault(); try { const res = await fetch(\`\${API}/mcp/tools/call\`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': \`Bearer \${token}\` }, body: JSON.stringify({ name: 'defender_generate_tracking_redirect', arguments: { finalUrl: document.getElementById('final-url').value, trackingId: document.getElementById('tracking-id').value } }) }); const r = await res.json(); const d = JSON.parse(r.content[0].text); document.getElementById('result-url').value = d.redirectChain.hops[0]?.url || d.finalUrl; document.getElementById('tracking-result').classList.remove('hidden'); } catch(err) { alert('Error: ' + err.message); } });
-    document.getElementById('attacker-form').addEventListener('submit', async e => { e.preventDefault(); try { const res = await fetch(\`\${API}/mcp/tools/call\`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': \`Bearer \${token}\` }, body: JSON.stringify({ name: 'defender_ingest_beacon', arguments: { fingerprint: document.getElementById('fingerprint').value, ip: document.getElementById('ip').value, phone: document.getElementById('phone').value, userAgent: document.getElementById('useragent').value } }) }); const r = await res.json(); if(r.isError) throw new Error(r.content[0].text); alert('Attacker added!'); e.target.reset(); } catch(err) { alert('Error: ' + err.message); } });
-    function copyToClipboard(id) { document.getElementById(id).select(); document.execCommand('copy'); alert('Copied!'); }
+    const API_BASE = '${apiBase}';
+    let authToken = localStorage.getItem('pow3r_auth_token') || '';
+    document.querySelectorAll('.nav-item').forEach(item => { item.addEventListener('click', e => { e.preventDefault(); showPage(item.dataset.page); }); });
+    function showPage(pageId) { document.querySelectorAll('.page, .nav-item').forEach(el => el.classList.remove('active')); document.getElementById(pageId).classList.add('active'); document.querySelector(\`[data-page="\${pageId}"]\`).classList.add('active'); }
+    async function checkAPIStatus() { try { const res = await fetch(\`\${API_BASE}/health\`); const data = await res.json(); document.getElementById('api-status').textContent = 'Online'; document.getElementById('api-status').className = 'text-green-400'; } catch (error) { document.getElementById('api-status').textContent = 'Offline'; document.getElementById('api-status').className = 'text-red-400'; } }
+    document.getElementById('tracking-form').addEventListener('submit', async e => { e.preventDefault(); const finalUrl = document.getElementById('final-url').value; const intermediateDomains = document.getElementById('intermediate-domains').value.split(',').map(d => d.trim()).filter(d => d); const trackingId = document.getElementById('tracking-id').value || undefined; try { const res = await fetch(\`\${API_BASE}/mcp/tools/call\`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': \`Bearer \${authToken}\` }, body: JSON.stringify({ name: 'defender_generate_tracking_redirect', arguments: { finalUrl, intermediateDomains, trackingId } }) }); const result = await res.json(); if (result.isError) throw new Error(result.content[0].text); const data = JSON.parse(result.content[0].text); document.getElementById('result-tracking-id').textContent = data.trackingId; document.getElementById('result-redirect-url').value = data.redirectChain.hops[0]?.url || finalUrl; document.getElementById('tracking-result').classList.remove('hidden'); } catch (error) { alert('Error: ' + error.message); } });
+    document.getElementById('attacker-form').addEventListener('submit', async e => { e.preventDefault(); const fingerprint = document.getElementById('attacker-fingerprint').value; const ip = document.getElementById('attacker-ip').value; const phone = document.getElementById('attacker-phone').value; const userAgent = document.getElementById('attacker-useragent').value; let metadata = {}; try { metadata = JSON.parse(document.getElementById('attacker-metadata').value || '{}'); } catch (e) { alert('Invalid JSON in metadata field'); return; } try { const res = await fetch(\`\${API_BASE}/mcp/tools/call\`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': \`Bearer \${authToken}\` }, body: JSON.stringify({ name: 'defender_ingest_beacon', arguments: { fingerprint: fingerprint || undefined, ip: ip || undefined, phone: phone || undefined, userAgent: userAgent || undefined, metadata } }) }); const result = await res.json(); if (result.isError) throw new Error(result.content[0].text); alert('Attacker information added successfully!'); document.getElementById('attacker-form').reset(); } catch (error) { alert('Error: ' + error.message); } });
+    function copyToClipboard(elementId) { const el = document.getElementById(elementId); el.select(); document.execCommand('copy'); alert('Copied to clipboard!'); }
+    checkAPIStatus(); setInterval(checkAPIStatus, 30000);
   </script>
 </body>
 </html>`,
