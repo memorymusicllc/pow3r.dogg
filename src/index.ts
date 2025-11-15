@@ -593,7 +593,7 @@ async function handleAttribution(
       });
 
       const ipEngine = new IPAttributionEngine(env);
-      const attribution = await ipEngine.attributeIP(ip, headers);
+      const attribution = await ipEngine.attributeIP(ip, headers as Record<string, string>);
 
       return jsonResponse({ success: true, attribution }, corsHeaders);
     } catch (error) {
