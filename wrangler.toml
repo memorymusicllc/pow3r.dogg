@@ -6,23 +6,26 @@ compatibility_date = "2024-11-14"
 name = "pow3r-defender-production"
 
 # D1 Database
-[[env.production.d1_databases]]
-binding = "DEFENDER_DB"
-database_name = "defender-db"
-database_id = "YOUR_D1_DATABASE_ID"
+# NOTE: D1 requires manual creation via Cloudflare Dashboard or API token with D1 permissions
+# Create at: https://dash.cloudflare.com/7d84a4241cd92238463580dd0e094bc7/workers/d1
+# After creating, uncomment and add the database_id:
+# [[env.production.d1_databases]]
+# binding = "DEFENDER_DB"
+# database_name = "defender-db"
+# database_id = "YOUR_D1_DATABASE_ID"
 
 # KV Namespaces
 [[env.production.kv_namespaces]]
 binding = "DEFENDER_FORGE"
-id = "YOUR_KV_DEFENDER_FORGE_ID"
+id = "a4b67e0b4324472bab4348a0f2a19e0a"
 
 [[env.production.kv_namespaces]]
 binding = "CONFIG_STORE"
-id = "YOUR_KV_CONFIG_STORE_ID"
+id = "0bd1ae60c3f54c7eb0c8d9465245ec47"
 
 [[env.production.kv_namespaces]]
 binding = "TELEGRAM_STATE"
-id = "YOUR_KV_TELEGRAM_STATE_ID"
+id = "c956774b8879481a8ed762df9bca0238"
 
 # R2 Buckets
 [[env.production.r2_buckets]]
@@ -34,11 +37,13 @@ binding = "EVIDENCE_VAULT"
 bucket_name = "evidence-vault"
 
 # Vectorize Index
-[[env.production.vectorize]]
-binding = "DEFENDER_VECTORS"
-index_name = "defender-vectors"
-dimensions = 768
-metric = "cosine"
+# NOTE: Vectorize requires manual creation via Cloudflare Dashboard or API token with Vectorize permissions
+# Create at: https://dash.cloudflare.com/7d84a4241cd92238463580dd0e094bc7/workers/vectorize
+# [[env.production.vectorize]]
+# binding = "DEFENDER_VECTORS"
+# index_name = "defender-vectors"
+# dimensions = 768
+# metric = "cosine"
 
 # Environment Variables
 [env.production.vars]
