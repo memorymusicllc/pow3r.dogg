@@ -10,6 +10,11 @@ import { AttackerDatabase } from './admin/attacker-db';
 import { AnalyticsEngine } from './admin/analytics';
 import { OSINTInterface } from './admin/osint-interface';
 import { EvidenceTimeline } from './admin/evidence-timeline';
+import { EmailLookup } from './osint/email-lookup';
+import { ImageLookup } from './osint/image-lookup';
+import { AddressLookup } from './osint/address-lookup';
+import { BusinessLookup } from './osint/business-lookup';
+import { FileUploadHandler } from './admin/file-upload';
 
 function jsonResponse(data: unknown, headers: Record<string, string>, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -236,6 +241,167 @@ export async function handleAdmin(
       } catch (error) {
         return jsonResponse(
           { error: 'OSINT lookup failed', message: String(error) },
+          corsHeaders,
+          500
+        );
+      }
+    }
+
+    // POST /admin/osint/email - Email lookup
+    if (url.pathname === '/admin/osint/email' && request.method === 'POST') {
+      try {
+        const body = await request.json() as { email: string };
+        if (!body.email) {
+          return jsonResponse({ error: 'Missing email' }, corsHeaders, 400);
+        }
+
+        const emailLookup = new EmailLookup(env);
+        const result = await emailLookup.lookup(body.email);
+        return jsonResponse({ success: true, result }, corsHeaders);
+      } catch (error) {
+        return jsonResponse(
+          { error: 'Email lookup failed', message: String(error) },
+          corsHeaders,
+          500
+        );
+      }
+    }
+
+    // POST /admin/osint/image - Image lookup (reverse search + face recognition)
+    if (url.pathname === '/admin/osint/image' && request.method === 'POST') {
+      try {
+        const formData = await request.formData();
+        const imageFile = formData.get('image') as File | null;
+        if (!imageFile) {
+          return jsonResponse({ error: 'Missing image file' }, corsHeaders, 400);
+        }
+
+        const imageData = await imageFile.arrayBuffer();
+        const imageLookup = new ImageLookup(env);
+        const result = await imageLookup.lookup(imageData, imageFile.type);
+        return jsonResponse({ success: true, result }, corsHeaders);
+      } catch (error) {
+        return jsonResponse(
+          { error: 'Image lookup failed', message: String(error) },
+          corsHeaders,
+          500
+        );
+      }
+    }
+
+    // POST /admin/osint/address - Address lookup
+    if (url.pathname === '/admin/osint/address' && request.method === 'POST') {
+      try {
+        const body = await request.json() as { address: string };
+        if (!body.address) {
+          return jsonResponse({ error: 'Missing address' }, corsHeaders, 400);
+        }
+
+        const addressLookup = new AddressLookup(env);
+        const result = await addressLookup.lookup(body.address);
+        return jsonResponse({ success: true, result }, corsHeaders);
+      } catch (error) {
+        return jsonResponse(
+          { error: 'Address lookup failed', message: String(error) },
+          corsHeaders,
+          500
+        );
+      }
+    }
+
+    // POST /admin/osint/business - Business lookup
+    if (url.pathname === '/admin/osint/business' && request.method === 'POST') {
+      try {
+        const body = await request.json() as { businessName: string };
+        if (!body.businessName) {
+          return jsonResponse({ error: 'Missing business name' }, corsHeaders, 400);
+        }
+
+        const businessLookup = new BusinessLookup(env);
+        const result = await businessLookup.lookup(body.businessName);
+        return jsonResponse({ success: true, result }, corsHeaders);
+      } catch (error) {
+        return jsonResponse(
+          { error: 'Business lookup failed', message: String(error) },
+          corsHeaders,
+          500
+        );
+      }
+    }
+  }
+
+  // File upload endpoints
+  if (url.pathname.startsWith('/admin/files')) {
+    const fileUpload = new FileUploadHandler(env);
+
+    // POST /admin/files/upload - Upload Markdown file
+    if (url.pathname === '/admin/files/upload' && request.method === 'POST') {
+      try {
+        const formData = await request.formData();
+        const file = formData.get('file') as File | null;
+        const attackerId = formData.get('attackerId') as string | null;
+        const uploadedBy = formData.get('uploadedBy') as string | null || 'system';
+
+        if (!file) {
+          return jsonResponse({ error: 'Missing file' }, corsHeaders, 400);
+        }
+        if (!attackerId) {
+          return jsonResponse({ error: 'Missing attacker ID' }, corsHeaders, 400);
+        }
+
+        if (file.type !== 'text/markdown' && !file.name.endsWith('.md')) {
+          return jsonResponse({ error: 'File must be Markdown (.md)' }, corsHeaders, 400);
+        }
+
+        const fileData = await file.arrayBuffer();
+        const result = await fileUpload.uploadFile(fileData, file.name, attackerId, uploadedBy);
+        return jsonResponse({ success: true, result }, corsHeaders);
+      } catch (error) {
+        return jsonResponse(
+          { error: 'File upload failed', message: String(error) },
+          corsHeaders,
+          500
+        );
+      }
+    }
+
+    // GET /admin/files/:attackerId - Get files for attacker
+    if (url.pathname.match(/^\/admin\/files\/[^/]+$/) && request.method === 'GET') {
+      const attackerId = url.pathname.split('/').pop();
+      if (!attackerId) {
+        return jsonResponse({ error: 'Missing attacker ID' }, corsHeaders, 400);
+      }
+
+      try {
+        const files = await fileUpload.getFiles(attackerId);
+        return jsonResponse({ success: true, files }, corsHeaders);
+      } catch (error) {
+        return jsonResponse(
+          { error: 'Get files failed', message: String(error) },
+          corsHeaders,
+          500
+        );
+      }
+    }
+  }
+
+  // Knowledge graph endpoints
+  if (url.pathname.startsWith('/admin/knowledge-graph')) {
+    const fileUpload = new FileUploadHandler(env);
+
+    // GET /admin/knowledge-graph/:attackerId - Get knowledge graph data
+    if (url.pathname.match(/^\/admin\/knowledge-graph\/[^/]+$/) && request.method === 'GET') {
+      const attackerId = url.pathname.split('/').pop();
+      if (!attackerId) {
+        return jsonResponse({ error: 'Missing attacker ID' }, corsHeaders, 400);
+      }
+
+      try {
+        const data = await fileUpload.getKnowledgeGraphData(attackerId);
+        return jsonResponse({ success: true, data }, corsHeaders);
+      } catch (error) {
+        return jsonResponse(
+          { error: 'Get knowledge graph failed', message: String(error) },
           corsHeaders,
           500
         );

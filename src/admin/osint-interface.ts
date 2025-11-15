@@ -102,7 +102,7 @@ export class OSINTInterface {
           url: `https://${platform}.com/${username || ''}`,
         }));
         identityGraph.domains = result.identityGraph.domainsOwned || [];
-        identityGraph.aliases = [...(result.identityGraph.aliases || [])];
+        identityGraph.alternates = [...(result.identityGraph.aliases || []), ...(identityGraph.alternates || [])];
         identityGraph.addresses = (result.identityGraph.locations || []).map((loc: { location: string }) => ({ address: loc.location }));
         confidence = result.confidence;
         riskScore = result.riskIndicators ? 0.5 : 0.5; // Would calculate from risk indicators

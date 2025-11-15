@@ -114,6 +114,29 @@ CREATE TABLE IF NOT EXISTS evidence_chain (
   created_at INTEGER DEFAULT (unixepoch())
 );
 
+-- Knowledge Graph Data (per attacker profile)
+CREATE TABLE IF NOT EXISTS knowledge_graph_data (
+  id TEXT PRIMARY KEY,
+  attacker_id TEXT NOT NULL,
+  file_name TEXT NOT NULL,
+  file_path TEXT NOT NULL, -- R2 key
+  parsed_data TEXT NOT NULL, -- JSON
+  uploaded_at INTEGER NOT NULL,
+  uploaded_by TEXT NOT NULL,
+  created_at INTEGER DEFAULT (unixepoch()),
+  FOREIGN KEY (attacker_id) REFERENCES attacker_profiles(id)
+);
+
+-- Image Lookup Cache
+CREATE TABLE IF NOT EXISTS image_lookup_cache (
+  id TEXT PRIMARY KEY,
+  image_hash TEXT UNIQUE NOT NULL,
+  reverse_search_results TEXT, -- JSON
+  face_recognition_results TEXT, -- JSON
+  lookup_timestamp INTEGER NOT NULL,
+  created_at INTEGER DEFAULT (unixepoch())
+);
+
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_evidence_case ON evidence_artifacts(type, timestamp);
 CREATE INDEX IF NOT EXISTS idx_custody_evidence ON chain_of_custody(evidence_id, timestamp);
@@ -133,4 +156,8 @@ CREATE INDEX IF NOT EXISTS idx_attacker_last_seen ON attacker_profiles(last_seen
 CREATE INDEX IF NOT EXISTS idx_evidence_chain_timestamp ON evidence_chain(timestamp);
 CREATE INDEX IF NOT EXISTS idx_evidence_chain_investigation ON evidence_chain(investigation_id);
 CREATE INDEX IF NOT EXISTS idx_evidence_chain_attacker ON evidence_chain(attacker_id);
+CREATE INDEX IF NOT EXISTS idx_knowledge_graph_attacker ON knowledge_graph_data(attacker_id);
+CREATE INDEX IF NOT EXISTS idx_knowledge_graph_uploaded ON knowledge_graph_data(uploaded_at);
+CREATE INDEX IF NOT EXISTS idx_image_lookup_hash ON image_lookup_cache(image_hash);
+CREATE INDEX IF NOT EXISTS idx_image_lookup_timestamp ON image_lookup_cache(lookup_timestamp);
 

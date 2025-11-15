@@ -204,7 +204,74 @@ export default {
         return new Response('Not Found', { status: 404, headers: corsHeaders });
       }
 
-      // Dashboard UI - serve from R2 or inline
+      // React Dashboard - serve from R2 or fallback
+      if (url.pathname === '/admin' || url.pathname.startsWith('/admin/')) {
+        // Check if it's an API endpoint first
+        if (url.pathname.startsWith('/admin/api/') || url.pathname.match(/^\/admin\/(attackers|analytics|osint|evidence|files|knowledge-graph)/)) {
+          // Let handleAdmin handle API endpoints
+          // This will be handled below
+        } else {
+          // Serve React app
+          try {
+            // Try to serve from R2
+            const r2Key = url.pathname === '/admin' || url.pathname === '/admin/'
+              ? 'dashboard/dist/index.html'
+              : `dashboard/dist${url.pathname.replace('/admin', '')}`;
+            
+            const object = await env.EVIDENCE_VAULT.get(r2Key);
+            if (object) {
+              const contentType = url.pathname.endsWith('.js')
+                ? 'application/javascript'
+                : url.pathname.endsWith('.css')
+                ? 'text/css'
+                : url.pathname.endsWith('.json')
+                ? 'application/json'
+                : url.pathname.endsWith('.png')
+                ? 'image/png'
+                : url.pathname.endsWith('.svg')
+                ? 'image/svg+xml'
+                : 'text/html';
+              
+              return new Response(await object.arrayBuffer(), {
+                headers: {
+                  ...corsHeaders,
+                  'Content-Type': contentType,
+                },
+              });
+            }
+          } catch (error) {
+            console.warn('Failed to load React dashboard from R2:', error);
+          }
+
+          // Fallback: serve inline React app entry point
+          if (url.pathname === '/admin' || url.pathname === '/admin/') {
+            const reactAppHtml = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pow3r Defender - Admin Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Rock+Salt&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/admin/assets/main.js"></script>
+  </body>
+</html>`;
+            return new Response(reactAppHtml, {
+              headers: {
+                ...corsHeaders,
+                'Content-Type': 'text/html',
+              },
+            });
+          }
+        }
+      }
+
+      // Legacy Dashboard UI - serve from R2 or inline
       if (url.pathname === '/dashboard' || url.pathname.startsWith('/dashboard/')) {
         try {
           // Try to serve from R2

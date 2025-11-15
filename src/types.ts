@@ -24,5 +24,11 @@ export interface Env {
   NUMVERIFY_API_KEY?: string;
   WHOIS_API_KEY?: string;
   ETHEREUM_RPC_URL?: string;
+  GOOGLE_MAPS_API_KEY?: string;
+  CLEARBIT_API_KEY?: string;
+  FULLCONTACT_API_KEY?: string;
+  SMARTYSTREETS_API_KEY?: string;
+  TINEYE_API_KEY?: string;
+  CLOUDFLARE_AI_TOKEN?: string;
 }
 

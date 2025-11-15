@@ -18,7 +18,10 @@
     "guardian:mock-scan": "grep -rE 'TODO:|placeholder|fakeData|mockData' ./src/ || true",
     "guardian:test": "npm run test:e2e:all",
     "guardian:config": "test -f build.yaml && test -f telegram-bot.yaml",
-    "guardian:law": "test -f laws/pow3r.v4.law.md || echo 'Law file not found'"
+    "guardian:law": "test -f laws/pow3r.v4.law.md || echo 'Law file not found'",
+    "dashboard:dev": "cd dashboard && npm run dev",
+    "dashboard:build": "cd dashboard && npm install && npm run build",
+    "dashboard:preview": "cd dashboard && npm run preview"
   },
   "keywords": [
     "fraud-detection",
@@ -34,7 +37,8 @@
   "dependencies": {
     "@fingerprintjs/fingerprintjs": "^4.5.0",
     "hono": "^4.6.0",
-    "@cloudflare/workers-types": "^4.20241106.0"
+    "@cloudflare/workers-types": "^4.20241106.0",
+    "marked": "^12.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
