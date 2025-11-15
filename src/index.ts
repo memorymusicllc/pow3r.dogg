@@ -50,6 +50,26 @@ export default {
         );
       }
 
+      // Favicon - serve from R2 or return 204 (no content)
+      if (url.pathname === '/favicon.ico') {
+        try {
+          const favicon = await env.EVIDENCE_VAULT.get('dashboard/dist/favicon.ico');
+          if (favicon) {
+            return new Response(await favicon.arrayBuffer(), {
+              headers: {
+                ...corsHeaders,
+                'Content-Type': 'image/x-icon',
+                'Cache-Control': 'public, max-age=31536000',
+              },
+            });
+          }
+        } catch (error) {
+          console.warn('Favicon not found in R2:', error);
+        }
+        // Return 204 No Content instead of 404
+        return new Response(null, { status: 204, headers: corsHeaders });
+      }
+
       // PWA - serve minimal PWA
       if (url.pathname.startsWith('/pwa/')) {
         if (url.pathname === '/pwa/' || url.pathname === '/pwa/index.html') {
