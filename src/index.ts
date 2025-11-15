@@ -18,6 +18,7 @@ import { OSINTUnmasker } from './osint/unmask';
 import { handleShorten } from './index-shorten-handler';
 import { handleCommunication } from './index-communication-handler';
 import { handleTelegramBot } from './index-telegram-bot';
+import { handleAdmin } from './index-admin-handler';
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -396,6 +397,11 @@ export default {
       // Communication endpoints
       if (url.pathname.startsWith('/api/communication/')) {
         return await handleCommunication(request, env, ctx, corsHeaders);
+      }
+
+      // Admin Dashboard endpoints
+      if (url.pathname.startsWith('/admin/')) {
+        return await handleAdmin(request, env, ctx, corsHeaders);
       }
 
       // 404

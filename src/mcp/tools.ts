@@ -312,6 +312,7 @@ async function handleIngestBeacon(
 ): Promise<MCPToolResult> {
   const fingerprint = args.fingerprint as string;
   const ip = args.ip as string;
+  const phone = args.phone as string;
   const userAgent = args.userAgent as string;
   const metadata = args.metadata as Record<string, unknown> || {};
 
@@ -322,11 +323,80 @@ async function handleIngestBeacon(
     JSON.stringify({
       fingerprint,
       ip,
+      phone,
       userAgent,
       metadata,
       timestamp: new Date().toISOString(),
     })
   );
+
+  // Also create/update attacker profile
+  const { AttackerDatabase } = await import('../admin/attacker-db');
+  const attackerDb = new AttackerDatabase(env);
+  
+  // Check if attacker exists
+  let attackerId: string | undefined;
+  if (fingerprint) {
+    const existing = await attackerDb.queryAttackers({ fingerprint, limit: 1 });
+    if (existing.length > 0) {
+      attackerId = existing[0].id;
+      // Update last seen
+      await attackerDb.updateAttacker(attackerId, { lastSeen: Date.now() });
+    }
+  }
+  
+  if (!attackerId) {
+    // Create new attacker profile
+    const now = Date.now();
+    const attacker = {
+      id: crypto.randomUUID(),
+      fingerprint,
+      ipAddress: ip,
+      phoneNumber: phone,
+      userAgent,
+      metadata,
+      firstSeen: now,
+      lastSeen: now,
+      threatScore: 0.5,
+      aliases: [],
+      relatedAttackers: [],
+      evidenceIds: [],
+      investigationIds: [],
+    };
+    
+    // Store in KV
+    await env.DEFENDER_FORGE.put(`attacker:${attacker.id}`, JSON.stringify(attacker));
+    
+    // Try D1
+    try {
+      if (env.DEFENDER_DB) {
+        await env.DEFENDER_DB
+          .prepare(
+            'INSERT INTO attacker_profiles (id, fingerprint, ip_address, phone_number, user_agent, metadata, first_seen, last_seen, threat_score, aliases, related_attackers, evidence_ids, investigation_ids) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+          )
+          .bind(
+            attacker.id,
+            attacker.fingerprint,
+            attacker.ipAddress,
+            attacker.phoneNumber,
+            attacker.userAgent,
+            JSON.stringify(attacker.metadata),
+            attacker.firstSeen,
+            attacker.lastSeen,
+            attacker.threatScore,
+            JSON.stringify(attacker.aliases),
+            JSON.stringify(attacker.relatedAttackers),
+            JSON.stringify(attacker.evidenceIds),
+            JSON.stringify(attacker.investigationIds)
+          )
+          .run();
+      }
+    } catch (error) {
+      console.warn('D1 attacker insert failed, using KV only:', error);
+    }
+    
+    attackerId = attacker.id;
+  }
 
   return {
     content: [
@@ -335,7 +405,8 @@ async function handleIngestBeacon(
         text: JSON.stringify({
           success: true,
           beaconId,
-          message: 'Beacon ingested successfully',
+          attackerId,
+          message: 'Beacon ingested and attacker profile updated',
         }),
       },
     ],

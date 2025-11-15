@@ -79,6 +79,41 @@ CREATE TABLE IF NOT EXISTS shortened_urls (
   custom_domain TEXT
 );
 
+-- Attacker Profiles
+CREATE TABLE IF NOT EXISTS attacker_profiles (
+  id TEXT PRIMARY KEY,
+  fingerprint TEXT,
+  ip_address TEXT,
+  phone_number TEXT,
+  user_agent TEXT,
+  metadata TEXT, -- JSON
+  first_seen INTEGER NOT NULL,
+  last_seen INTEGER NOT NULL,
+  threat_score REAL DEFAULT 0.5,
+  aliases TEXT, -- JSON array
+  related_attackers TEXT, -- JSON array
+  evidence_ids TEXT, -- JSON array
+  investigation_ids TEXT, -- JSON array
+  created_at INTEGER DEFAULT (unixepoch())
+);
+
+-- Evidence Chain (for timeline)
+CREATE TABLE IF NOT EXISTS evidence_chain (
+  id TEXT PRIMARY KEY,
+  evidence_id TEXT NOT NULL,
+  timestamp INTEGER NOT NULL,
+  type TEXT NOT NULL,
+  description TEXT NOT NULL,
+  collected_by TEXT NOT NULL,
+  investigation_id TEXT,
+  attacker_id TEXT,
+  hash TEXT NOT NULL,
+  metadata TEXT, -- JSON
+  chain_index INTEGER NOT NULL,
+  previous_hash TEXT,
+  created_at INTEGER DEFAULT (unixepoch())
+);
+
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_evidence_case ON evidence_artifacts(type, timestamp);
 CREATE INDEX IF NOT EXISTS idx_custody_evidence ON chain_of_custody(evidence_id, timestamp);
@@ -90,4 +125,12 @@ CREATE INDEX IF NOT EXISTS idx_communication_channel ON communication_records(ch
 CREATE INDEX IF NOT EXISTS idx_communication_sender ON communication_records(sender_identifier);
 CREATE INDEX IF NOT EXISTS idx_short_code ON shortened_urls(short_code);
 CREATE INDEX IF NOT EXISTS idx_short_tracking ON shortened_urls(tracking_id);
+CREATE INDEX IF NOT EXISTS idx_attacker_fingerprint ON attacker_profiles(fingerprint);
+CREATE INDEX IF NOT EXISTS idx_attacker_ip ON attacker_profiles(ip_address);
+CREATE INDEX IF NOT EXISTS idx_attacker_phone ON attacker_profiles(phone_number);
+CREATE INDEX IF NOT EXISTS idx_attacker_threat ON attacker_profiles(threat_score);
+CREATE INDEX IF NOT EXISTS idx_attacker_last_seen ON attacker_profiles(last_seen);
+CREATE INDEX IF NOT EXISTS idx_evidence_chain_timestamp ON evidence_chain(timestamp);
+CREATE INDEX IF NOT EXISTS idx_evidence_chain_investigation ON evidence_chain(investigation_id);
+CREATE INDEX IF NOT EXISTS idx_evidence_chain_attacker ON evidence_chain(attacker_id);
 
