@@ -1,0 +1,4 @@
+---
+alwaysApply: true
+---
+All files in `.cursor/` contain project rules.

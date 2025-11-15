@@ -1,0 +1,100 @@
+{
+  "mcpServers": {
+    "replicate": {
+      "url": "https://config.superbots.link/mcp/replicate/sse",
+      "transport": "sse",
+      "description": "Replicate MCP Server - Video and image generation"
+    },
+    "gemini": {
+      "url": "https://config.superbots.link/mcp/gemini/sse",
+      "transport": "sse",
+      "description": "Gemini MCP Server - Google AI text, vision, and embeddings"
+    },
+    "claude": {
+      "url": "https://config.superbots.link/mcp/claude/sse",
+      "transport": "sse",
+      "description": "Claude MCP Server - Anthropic Claude AI"
+    },
+    "obsidian": {
+      "url": "https://config.superbots.link/mcp/obsidian/sse",
+      "transport": "sse",
+      "description": "Obsidian MCP Server - Interact with Obsidian vault via REST API"
+    },
+    "cloudflare-docs": {
+      "url": "https://docs.mcp.cloudflare.com/mcp",
+      "transport": "streamable-http",
+      "description": "Cloudflare Documentation Server - Get up to date reference information"
+    },
+    "cloudflare-bindings": {
+      "url": "https://bindings.mcp.cloudflare.com/mcp",
+      "transport": "streamable-http",
+      "description": "Cloudflare Workers Bindings Server - Build Workers with storage, AI, and compute"
+    },
+    "cloudflare-builds": {
+      "url": "https://builds.mcp.cloudflare.com/mcp",
+      "transport": "streamable-http",
+      "description": "Cloudflare Workers Builds Server - Get insights and manage builds"
+    },
+    "cloudflare-observability": {
+      "url": "https://observability.mcp.cloudflare.com/mcp",
+      "transport": "streamable-http",
+      "description": "Cloudflare Observability Server - Debug and get insight into logs and analytics"
+    },
+    "cloudflare-radar": {
+      "url": "https://radar.mcp.cloudflare.com/mcp",
+      "transport": "streamable-http",
+      "description": "Cloudflare Radar Server - Get global Internet traffic insights and trends"
+    },
+    "cloudflare-browser": {
+      "url": "https://browser.mcp.cloudflare.com/mcp",
+      "transport": "streamable-http",
+      "description": "Cloudflare Browser Rendering Server - Fetch pages, convert to markdown, take screenshots"
+    },
+    "cloudflare-ai-gateway": {
+      "url": "https://ai-gateway.mcp.cloudflare.com/mcp",
+      "transport": "streamable-http",
+      "description": "Cloudflare AI Gateway Server - Search logs, get details about prompts and responses"
+    },
+    "mermaid": {
+      "url": "https://config.superbots.link/mcp/mermaid/sse",
+      "transport": "sse",
+      "description": "Mermaid MCP Server - Generate and render Mermaid diagrams"
+    },
+    "github": {
+      "url": "https://config.superbots.link/mcp/github/sse",
+      "transport": "sse",
+      "description": "GitHub MCP Server - GitHub operations (repos, issues, PRs, files)"
+    },
+    "elevenlabs": {
+      "url": "https://config.superbots.link/mcp/elevenlabs/sse",
+      "transport": "sse",
+      "description": "ElevenLabs MCP Server - Text-to-speech and voice generation"
+    },
+    "mistral": {
+      "url": "https://config.superbots.link/mcp/mistral/sse",
+      "transport": "sse",
+      "description": "Mistral AI MCP Server - Chat completions"
+    },
+    "deepseek": {
+      "url": "https://config.superbots.link/mcp/deepseek/sse",
+      "transport": "sse",
+      "description": "DeepSeek AI MCP Server - Chat completions"
+    },
+    "qwen": {
+      "url": "https://config.superbots.link/mcp/qwen/sse",
+      "transport": "sse",
+      "description": "Qwen AI MCP Server - Chat completions"
+    },
+    "gcloud": {
+      "command": "npx",
+      "args": ["-y", "@google-cloud/gcloud-mcp"],
+      "description": "Google Cloud MCP Server - Execute gcloud commands and manage GCP resources"
+    },
+    "cloud-run": {
+      "command": "npx",
+      "args": ["-y", "@google-cloud/cloud-run-mcp"],
+      "description": "Cloud Run MCP Server - Deploy apps to Google Cloud Run"
+    }
+  }
+}
+
