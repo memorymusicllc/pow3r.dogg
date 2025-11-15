@@ -278,7 +278,10 @@ export class OSINTUnmasker {
       );
 
       if (response.ok) {
-        const data = await response.json() as Record<string, unknown>;
+        const data = await response.json() as {
+          line_type?: string;
+          carrier?: string;
+        };
         const type = data.line_type === 'mobile' ? 'mobile' : data.line_type === 'voip' ? 'voip' : 'landline';
         
         timeline.push({
@@ -289,7 +292,7 @@ export class OSINTUnmasker {
 
         return {
           type,
-          carrier: data.carrier,
+          carrier: data.carrier || 'unknown',
           additionalNumbers,
           timeline,
         };
