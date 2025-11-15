@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pow3r Defender - Admin Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://unpkg.com/vis-network@latest/dist/vis-network.min.js"></script>
+  <style>
+    body { background: #0a0a0a; color: #e5e5e5; font-family: system-ui, sans-serif; }
+    .card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 12px; padding: 1.5rem; max-width: 520px; width: 100%; }
+    @media (min-width: 768px) { .card { max-width: 520px; } }
+    .btn { background: #3b82f6; color: white; padding: 0.75rem 1.5rem; border-radius: 8px; border: none; cursor: pointer; font-weight: 500; transition: background 0.2s; }
+    .btn:hover { background: #2563eb; }
+    .btn-secondary { background: #2a2a2a; }
+    .input { background: #0a0a0a; border: 1px solid #2a2a2a; color: #e5e5e5; padding: 0.75rem; border-radius: 8px; width: 100%; }
+    .input:focus { outline: none; border-color: #3b82f6; }
+    .nav-bottom { position: fixed; bottom: 0; left: 0; right: 0; background: #1a1a1a; border-top: 1px solid #2a2a2a; padding: 0.75rem; display: flex; justify-content: space-around; z-index: 1000; }
+    @media (min-width: 1024px) { .nav-bottom { left: 0; top: 0; bottom: 0; width: 80px; flex-direction: column; border-top: none; border-right: 1px solid #2a2a2a; } }
+    .nav-item { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; padding: 0.5rem; cursor: pointer; color: #666; text-decoration: none; transition: color 0.2s; }
+    .nav-item.active { color: #3b82f6; }
+    .nav-item:hover { color: #3b82f6; }
+    .nav-item span { font-size: 0.75rem; }
+    .content { padding: 1rem; padding-bottom: 100px; }
+    @media (min-width: 1024px) { .content { margin-left: 80px; padding-bottom: 1rem; } }
+    .page { display: none; }
+    .page.active { display: block; }
+    .grid { display: grid; gap: 1rem; grid-template-columns: 1fr; }
+    @media (min-width: 768px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+    .metric-card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 12px; padding: 1.5rem; }
+    .metric-value { font-size: 2rem; font-weight: bold; color: #3b82f6; }
+    .metric-label { font-size: 0.875rem; color: #999; margin-top: 0.5rem; }
+    .timeline-item { border-left: 2px solid #2a2a2a; padding-left: 1rem; margin-bottom: 1rem; position: relative; }
+    .timeline-item::before { content: ''; position: absolute; left: -6px; top: 0.5rem; width: 10px; height: 10px; background: #3b82f6; border-radius: 50%; }
+    #network-graph { width: 100%; height: 400px; background: #0a0a0a; border: 1px solid #2a2a2a; border-radius: 8px; }
+    #knowledge-graph { width: 100%; height: 500px; background: #0a0a0a; border: 1px solid #2a2a2a; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <nav class="nav-bottom">
+    <a href="#" class="nav-item active" data-page="overview">📊<span>Overview</span></a>
+    <a href="#" class="nav-item" data-page="osint">🔍<span>OSINT</span></a>
+    <a href="#" class="nav-item" data-page="analytics">📈<span>Analytics</span></a>
+    <a href="#" class="nav-item" data-page="attackers">👤<span>Attackers</span></a>
+    <a href="#" class="nav-item" data-page="evidence">📋<span>Evidence</span></a>
+    <a href="#" class="nav-item" data-page="investigations">🔎<span>Cases</span></a>
+  </nav>
+  <div class="content">
+    <!-- Overview Page -->
+    <div id="overview" class="page active">
+      <h1 class="text-2xl font-bold mb-6">Admin Dashboard</h1>
+      <div class="grid mb-6">
+        <div class="metric-card">
+          <div class="metric-value" id="total-threats">-</div>
+          <div class="metric-label">Total Threats</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value" id="high-threat">-</div>
+          <div class="metric-label">High Threat</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value" id="active-24h">-</div>
+          <div class="metric-label">Active (24h)</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value" id="new-24h">-</div>
+          <div class="metric-label">New (24h)</div>
+        </div>
+      </div>
+      <div class="card">
+        <h2 class="text-xl font-semibold mb-4">Quick Actions</h2>
+        <div class="space-y-3">
+          <button class="btn w-full" onclick="showPage('osint')">OSINT Lookup</button>
+          <button class="btn btn-secondary w-full" onclick="showPage('attackers')">View Attackers</button>
+          <button class="btn btn-secondary w-full" onclick="showPage('analytics')">View Analytics</button>
+          <button class="btn btn-secondary w-full" onclick="showPage('evidence')">Evidence Timeline</button>
+        </div>
+      </div>
+      <div class="card mt-4">
+        <h2 class="text-xl font-semibold mb-4">Top Threats</h2>
+        <div id="top-threats-list" class="space-y-2"></div>
+      </div>
+    </div>
+
+    <!-- OSINT Lookup Page -->
+    <div id="osint" class="page">
+      <h1 class="text-2xl font-bold mb-6">OSINT Lookup</h1>
+      <div class="card mb-4">
+        <h2 class="text-xl font-semibold mb-4">Deep Identity Unmasking</h2>
+        <form id="osint-form" class="space-y-4">
+          <div>
+            <label class="block mb-2 text-sm font-medium">Identifier (Email/Phone/Domain/IP)</label>
+            <input type="text" id="osint-identifier" class="input" placeholder="attacker@example.com" required>
+          </div>
+          <div>
+            <label class="block mb-2 text-sm font-medium">Upload Research Data (JSON, optional)</label>
+            <textarea id="osint-upload" class="input" rows="4" placeholder='{"emails": ["alt@example.com"], "names": ["John Doe"], "addresses": ["123 Main St"]}'></textarea>
+          </div>
+          <button type="submit" class="btn w-full">Perform Lookup</button>
+        </form>
+      </div>
+      <div id="osint-results" class="hidden">
+        <div class="card mb-4">
+          <h2 class="text-xl font-semibold mb-4">Identity Graph</h2>
+          <div id="osint-identity" class="space-y-3"></div>
+        </div>
+        <div class="card">
+          <h2 class="text-xl font-semibold mb-4">Knowledge Graph</h2>
+          <div id="knowledge-graph"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Analytics Page -->
+    <div id="analytics" class="page">
+      <h1 class="text-2xl font-bold mb-6">Analytics</h1>
+      <div class="card mb-4">
+        <h2 class="text-xl font-semibold mb-4">Risk Trends</h2>
+        <canvas id="risk-trend-chart"></canvas>
+      </div>
+      <div class="card mb-4">
+        <h2 class="text-xl font-semibold mb-4">Attacker Network Graph</h2>
+        <div id="network-graph"></div>
+      </div>
+      <div class="card">
+        <h2 class="text-xl font-semibold mb-4">Threat Distribution</h2>
+        <canvas id="threat-dist-chart"></canvas>
+      </div>
+    </div>
+
+    <!-- Attackers Page -->
+    <div id="attackers" class="page">
+      <h1 class="text-2xl font-bold mb-6">Attacker Database</h1>
+      <div class="card mb-4">
+        <h2 class="text-xl font-semibold mb-4">Search & Filter</h2>
+        <div class="space-y-3">
+          <input type="text" id="attacker-search" class="input" placeholder="Search attackers...">
+          <div class="grid grid-cols-2 gap-2">
+            <input type="text" id="filter-ip" class="input" placeholder="IP Address">
+            <input type="text" id="filter-phone" class="input" placeholder="Phone">
+          </div>
+          <button class="btn w-full" onclick="loadAttackers()">Search</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2 class="text-xl font-semibold mb-4">Attackers</h2>
+        <div id="attackers-list" class="space-y-3"></div>
+      </div>
+    </div>
+
+    <!-- Evidence Timeline Page -->
+    <div id="evidence" class="page">
+      <h1 class="text-2xl font-bold mb-6">Evidence Timeline</h1>
+      <div class="card mb-4">
+        <h2 class="text-xl font-semibold mb-4">Filters</h2>
+        <div class="space-y-3">
+          <input type="text" id="evidence-investigation" class="input" placeholder="Investigation ID">
+          <input type="text" id="evidence-attacker" class="input" placeholder="Attacker ID">
+          <div class="grid grid-cols-2 gap-2">
+            <input type="date" id="evidence-start" class="input">
+            <input type="date" id="evidence-end" class="input">
+          </div>
+          <button class="btn w-full" onclick="loadEvidenceTimeline()">Load Timeline</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2 class="text-xl font-semibold mb-4">Timeline</h2>
+        <div id="evidence-timeline" class="space-y-3"></div>
+      </div>
+    </div>
+
+    <!-- Investigations Page -->
+    <div id="investigations" class="page">
+      <h1 class="text-2xl font-bold mb-6">Investigations</h1>
+      <div class="card">
+        <h2 class="text-xl font-semibold mb-4">Active Investigations</h2>
+        <div id="investigations-list" class="space-y-3">
+          <p class="text-gray-400 text-center py-8">No active investigations</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const API_BASE = window.location.origin;
+    let authToken = localStorage.getItem('pow3r_auth_token') || '';
+    let riskTrendChart, threatDistChart, networkGraph, knowledgeGraph;
+
+    // Navigation
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.addEventListener('click', e => {
+        e.preventDefault();
+        showPage(item.dataset.page);
+      });
+    });
+
+    function showPage(pageId) {
+      document.querySelectorAll('.page, .nav-item').forEach(el => el.classList.remove('active'));
+      document.getElementById(pageId).classList.add('active');
+      document.querySelector(`[data-page="${pageId}"]`).classList.add('active');
+      
+      // Load page-specific data
+      if (pageId === 'overview') loadOverview();
+      else if (pageId === 'analytics') loadAnalytics();
+      else if (pageId === 'attackers') loadAttackers();
+    }
+
+    // Overview
+    async function loadOverview() {
+      try {
+        const [metricsRes, threatsRes] = await Promise.all([
+          fetch(`${API_BASE}/admin/analytics/threat-metrics`, { headers: { 'Authorization': `Bearer ${authToken}` } }),
+          fetch(`${API_BASE}/admin/analytics/top-threats?limit=5`, { headers: { 'Authorization': `Bearer ${authToken}` } })
+        ]);
+        const { metrics } = await metricsRes.json();
+        const { threats } = await threatsRes.json();
+        
+        document.getElementById('total-threats').textContent = metrics.totalThreats || 0;
+        document.getElementById('high-threat').textContent = metrics.highThreatCount || 0;
+        document.getElementById('active-24h').textContent = metrics.activeAttackers24h || 0;
+        document.getElementById('new-24h').textContent = metrics.newThackers24h || 0;
+        
+        const threatsList = document.getElementById('top-threats-list');
+        threatsList.innerHTML = threats.map(t => `
+          <div class="flex justify-between items-center p-2 bg-dark-surface rounded">
+            <span class="text-sm">${t.fingerprint || t.ipAddress || t.id.substring(0, 8)}</span>
+            <span class="text-xs text-gray-400">Score: ${(t.threatScore * 100).toFixed(0)}%</span>
+          </div>
+        `).join('');
+      } catch (error) {
+        console.error('Failed to load overview:', error);
+      }
+    }
+
+    // OSINT
+    document.getElementById('osint-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const identifier = document.getElementById('osint-identifier').value;
+      let uploadData = {};
+      try {
+        const uploadText = document.getElementById('osint-upload').value;
+        if (uploadText) uploadData = JSON.parse(uploadText);
+      } catch (e) {
+        alert('Invalid JSON in upload data');
+        return;
+      }
+      
+      try {
+        const res = await fetch(`${API_BASE}/admin/osint/lookup`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+          body: JSON.stringify({ identifier, uploadData })
+        });
+        const { result } = await res.json();
+        
+        // Display identity graph
+        const identityDiv = document.getElementById('osint-identity');
+        identityDiv.innerHTML = `
+          <div><strong>Confidence:</strong> ${(result.confidence * 100).toFixed(0)}%</div>
+          <div><strong>Risk Score:</strong> ${(result.riskScore * 100).toFixed(0)}%</div>
+          ${result.identityGraph.emailAddresses.length ? `<div><strong>Emails:</strong> ${result.identityGraph.emailAddresses.join(', ')}</div>` : ''}
+          ${result.identityGraph.phoneNumbers.length ? `<div><strong>Phones:</strong> ${result.identityGraph.phoneNumbers.map(p => p.number).join(', ')}</div>` : ''}
+          ${result.identityGraph.names.length ? `<div><strong>Names:</strong> ${result.identityGraph.names.map(n => n.name).join(', ')}</div>` : ''}
+          ${result.relatedAttackers.length ? `<div><strong>Related Attackers:</strong> ${result.relatedAttackers.length}</div>` : ''}
+        `;
+        
+        // Render knowledge graph
+        renderKnowledgeGraph(result.knowledgeGraph);
+        document.getElementById('osint-results').classList.remove('hidden');
+      } catch (error) {
+        alert('OSINT lookup failed: ' + error.message);
+      }
+    });
+
+    function renderKnowledgeGraph(graph) {
+      const container = document.getElementById('knowledge-graph');
+      const nodes = graph.nodes.map(n => ({ id: n.id, label: n.label, ...n }));
+      const edges = graph.edges.map(e => ({ from: e.source, to: e.target, label: e.relationship }));
+      const data = { nodes: new vis.DataSet(nodes), edges: new vis.DataSet(edges) };
+      const options = { nodes: { color: '#3b82f6' }, edges: { color: '#666' }, physics: { enabled: true } };
+      knowledgeGraph = new vis.Network(container, data, options);
+    }
+
+    // Analytics
+    async function loadAnalytics() {
+      try {
+        const [trendsRes, graphRes, metricsRes] = await Promise.all([
+          fetch(`${API_BASE}/admin/analytics/risk-trends?days=30`, { headers: { 'Authorization': `Bearer ${authToken}` } }),
+          fetch(`${API_BASE}/admin/analytics/network-graph?limit=50`, { headers: { 'Authorization': `Bearer ${authToken}` } }),
+          fetch(`${API_BASE}/admin/analytics/threat-metrics`, { headers: { 'Authorization': `Bearer ${authToken}` } })
+        ]);
+        const { trends } = await trendsRes.json();
+        const { graph } = await graphRes.json();
+        const { metrics } = await metricsRes.json();
+        
+        // Risk trend chart
+        const trendCtx = document.getElementById('risk-trend-chart').getContext('2d');
+        if (riskTrendChart) riskTrendChart.destroy();
+        riskTrendChart = new Chart(trendCtx, {
+          type: 'line',
+          data: {
+            labels: trends.map(t => t.date),
+            datasets: [{
+              label: 'Threat Score',
+              data: trends.map(t => t.threatScore),
+              borderColor: '#3b82f6',
+              backgroundColor: 'rgba(59, 130, 246, 0.1)'
+            }]
+          },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#e5e5e5' } } }, scales: { y: { ticks: { color: '#999' }, grid: { color: '#2a2a2a' } }, x: { ticks: { color: '#999' }, grid: { color: '#2a2a2a' } } } }
+        });
+        
+        // Network graph
+        const networkContainer = document.getElementById('network-graph');
+        const networkNodes = graph.nodes.map(n => ({ id: n.id, label: n.label, ...n }));
+        const networkEdges = graph.edges.map(e => ({ from: e.source, to: e.target, label: e.relationship }));
+        const networkData = { nodes: new vis.DataSet(networkNodes), edges: new vis.DataSet(networkEdges) };
+        const networkOptions = { nodes: { color: '#3b82f6', size: 20 }, edges: { color: '#666' }, physics: { enabled: true } };
+        networkGraph = new vis.Network(networkContainer, networkData, networkOptions);
+        
+        // Threat distribution chart
+        const distCtx = document.getElementById('threat-dist-chart').getContext('2d');
+        if (threatDistChart) threatDistChart.destroy();
+        threatDistChart = new Chart(distCtx, {
+          type: 'doughnut',
+          data: {
+            labels: ['High', 'Medium', 'Low'],
+            datasets: [{
+              data: [metrics.highThreatCount, metrics.mediumThreatCount, metrics.lowThreatCount],
+              backgroundColor: ['#ef4444', '#f59e0b', '#10b981']
+            }]
+          },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#e5e5e5' } } } }
+        });
+      } catch (error) {
+        console.error('Failed to load analytics:', error);
+      }
+    }
+
+    // Attackers
+    async function loadAttackers() {
+      const search = document.getElementById('attacker-search').value;
+      const ip = document.getElementById('filter-ip').value;
+      const phone = document.getElementById('filter-phone').value;
+      
+      try {
+        let url = `${API_BASE}/admin/attackers?limit=50`;
+        if (search) url = `${API_BASE}/admin/attackers/search?q=${encodeURIComponent(search)}&limit=50`;
+        else {
+          if (ip) url += `&ipAddress=${encodeURIComponent(ip)}`;
+          if (phone) url += `&phoneNumber=${encodeURIComponent(phone)}`;
+        }
+        
+        const res = await fetch(url, { headers: { 'Authorization': `Bearer ${authToken}` } });
+        const { attackers } = await res.json();
+        
+        const list = document.getElementById('attackers-list');
+        list.innerHTML = attackers.length ? attackers.map(a => `
+          <div class="p-3 bg-dark-surface rounded border border-dark-border">
+            <div class="flex justify-between items-start mb-2">
+              <div>
+                <div class="font-semibold">${a.fingerprint || a.ipAddress || a.id.substring(0, 8)}</div>
+                <div class="text-sm text-gray-400">Threat: ${(a.threatScore * 100).toFixed(0)}%</div>
+              </div>
+              <button class="btn btn-secondary text-xs" onclick="viewAttackerNetwork('${a.id}')">Network</button>
+            </div>
+            ${a.ipAddress ? `<div class="text-xs text-gray-500">IP: ${a.ipAddress}</div>` : ''}
+            ${a.phoneNumber ? `<div class="text-xs text-gray-500">Phone: ${a.phoneNumber}</div>` : ''}
+          </div>
+        `).join('') : '<p class="text-gray-400 text-center py-8">No attackers found</p>';
+      } catch (error) {
+        console.error('Failed to load attackers:', error);
+      }
+    }
+
+    async function viewAttackerNetwork(attackerId) {
+      try {
+        const res = await fetch(`${API_BASE}/admin/attackers/${attackerId}/network`, {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        const { network } = await res.json();
+        alert(`Network: ${network.connections.length} connections found`);
+        // Could open modal with network visualization
+      } catch (error) {
+        alert('Failed to load network: ' + error.message);
+      }
+    }
+
+    // Evidence Timeline
+    async function loadEvidenceTimeline() {
+      const investigation = document.getElementById('evidence-investigation').value;
+      const attacker = document.getElementById('evidence-attacker').value;
+      const start = document.getElementById('evidence-start').value;
+      const end = document.getElementById('evidence-end').value;
+      
+      let url = `${API_BASE}/admin/evidence/timeline?limit=100`;
+      if (investigation) url += `&investigationId=${encodeURIComponent(investigation)}`;
+      if (attacker) url += `&attackerId=${encodeURIComponent(attacker)}`;
+      if (start) url += `&startDate=${new Date(start).getTime()}`;
+      if (end) url += `&endDate=${new Date(end).getTime()}`;
+      
+      try {
+        const res = await fetch(url, { headers: { 'Authorization': `Bearer ${authToken}` } });
+        const { entries } = await res.json();
+        
+        const timeline = document.getElementById('evidence-timeline');
+        timeline.innerHTML = entries.length ? entries.map(e => `
+          <div class="timeline-item">
+            <div class="text-sm font-semibold">${e.type}</div>
+            <div class="text-xs text-gray-400">${new Date(e.timestamp).toLocaleString()}</div>
+            <div class="text-sm mt-1">${e.description}</div>
+            <div class="text-xs text-gray-500 mt-1">Hash: ${e.hash.substring(0, 16)}...</div>
+          </div>
+        `).join('') : '<p class="text-gray-400 text-center py-8">No evidence found</p>';
+      } catch (error) {
+        console.error('Failed to load timeline:', error);
+      }
+    }
+
+    // Initialize
+    loadOverview();
+    setInterval(loadOverview, 60000); // Refresh every minute
+  </script>
+</body>
+</html>
+

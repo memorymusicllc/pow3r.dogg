@@ -228,6 +228,21 @@ export default {
         // Fallback: serve inline dashboard
         if (url.pathname === '/dashboard' || url.pathname === '/dashboard/') {
           const apiBase = url.origin;
+          // Try to serve admin dashboard first
+          try {
+            const adminHtml = await env.EVIDENCE_VAULT.get('dashboard/admin.html');
+            if (adminHtml) {
+              return new Response(await adminHtml.text(), {
+                headers: {
+                  ...corsHeaders,
+                  'Content-Type': 'text/html',
+                },
+              });
+            }
+          } catch (error) {
+            console.warn('Failed to load admin dashboard from R2:', error);
+          }
+          // Fallback to basic dashboard
           return new Response(
             `<!DOCTYPE html>
 <html lang="en" class="dark">
