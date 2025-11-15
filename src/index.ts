@@ -377,16 +377,22 @@ async function handleTelegram(
       const { MessageCapture } = await import('./telegram/capture');
       
       const capture = new MessageCapture(env);
+      const messageData = (body.messageData as {
+        text?: string;
+        photo?: string;
+        timestamp: number;
+        isSelfDestruct: boolean;
+      }) || {
+        text: body.text as string | undefined,
+        photo: body.photo as string | undefined,
+        timestamp: (body.timestamp as number) || Date.now(),
+        isSelfDestruct: true,
+      };
       const result = await capture.captureSelfDestruct(
-        body.messageId,
-        body.chatId,
-        body.userId,
-        body.messageData || {
-          text: body.text,
-          photo: body.photo,
-          timestamp: body.timestamp || Date.now(),
-          isSelfDestruct: true,
-        }
+        body.messageId as string,
+        body.chatId as string,
+        body.userId as string,
+        messageData
       );
       
       return jsonResponse({ success: true, result }, corsHeaders);
@@ -517,9 +523,9 @@ async function handleEvidence(
       const body = await request.json() as Record<string, unknown>;
       const evidenceChain = new EnhancedEvidenceChain(env);
       const package_ = await evidenceChain.exportEvidencePackage(
-        body.caseId,
-        body.evidenceIds,
-        body.exportedBy || 'system'
+        body.caseId as string,
+        body.evidenceIds as string[],
+        (body.exportedBy as string) || 'system'
       );
 
       return jsonResponse({ success: true, package: package_ }, corsHeaders);
@@ -655,11 +661,11 @@ async function handleOSINT(
       const body = await request.json() as Record<string, unknown>;
       const unmasker = new OSINTUnmasker(env);
       const result = await unmasker.unmaskIdentity({
-        email: body.email,
-        phone: body.phone,
-        username: body.username,
-        domain: body.domain,
-        name: body.name,
+        email: body.email as string | undefined,
+        phone: body.phone as string | undefined,
+        username: body.username as string | undefined,
+        domain: body.domain as string | undefined,
+        name: body.name as string | undefined,
       });
 
       return jsonResponse({ success: true, result }, corsHeaders);

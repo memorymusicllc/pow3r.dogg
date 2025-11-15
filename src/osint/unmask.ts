@@ -324,7 +324,12 @@ export class OSINTUnmasker {
       );
 
       if (response.ok) {
-        const data = await response.json() as Record<string, unknown>;
+        const data = await response.json() as {
+          WhoisRecord?: {
+            registryData?: { createdDate?: string };
+            createdDate?: string;
+          };
+        };
         const creationDate = data.WhoisRecord?.registryData?.createdDate || 
                            data.WhoisRecord?.createdDate;
         
