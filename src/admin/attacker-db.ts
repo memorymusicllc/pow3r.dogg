@@ -280,7 +280,7 @@ export class AttackerDatabase {
           .run();
       }
     } catch (error) {
-      console.warn('D1 create failed, using KV fallback:', error);
+      console.warn('D1 insert failed, using KV fallback:', error);
     }
 
     // Store in KV

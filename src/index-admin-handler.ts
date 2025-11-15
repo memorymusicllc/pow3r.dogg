@@ -207,7 +207,7 @@ export async function handleAdmin(
       }
     }
 
-    // POST /admin/attackers - Create new attacker
+    // POST /admin/attackers - Create attacker
     if (url.pathname === '/admin/attackers' && request.method === 'POST') {
       try {
         const body = await request.json() as Partial<AttackerProfile>;
@@ -216,6 +216,49 @@ export async function handleAdmin(
       } catch (error) {
         return jsonResponse(
           { error: 'Create failed', message: String(error) },
+          corsHeaders,
+          500
+        );
+      }
+    }
+
+    // PUT /admin/attackers/:id - Update attacker
+    // POST /admin/attackers/:id - Update attacker (alternative)
+    if (url.pathname.match(/^\/admin\/attackers\/[^/]+$/) && (request.method === 'PUT' || request.method === 'POST')) {
+      const id = url.pathname.split('/').pop();
+      if (!id) {
+        return jsonResponse({ error: 'Missing attacker ID' }, corsHeaders, 400);
+      }
+
+      try {
+        const body = await request.json() as Partial<AttackerProfile>;
+        const attacker = await attackerDb.updateAttacker(id, body);
+        if (!attacker) {
+          return jsonResponse({ error: 'Attacker not found' }, corsHeaders, 404);
+        }
+        return jsonResponse({ success: true, attacker }, corsHeaders);
+      } catch (error) {
+        return jsonResponse(
+          { error: 'Update failed', message: String(error) },
+          corsHeaders,
+          500
+        );
+      }
+    }
+
+    // DELETE /admin/attackers/:id - Delete attacker
+    if (url.pathname.match(/^\/admin\/attackers\/[^/]+$/) && request.method === 'DELETE') {
+      const id = url.pathname.split('/').pop();
+      if (!id) {
+        return jsonResponse({ error: 'Missing attacker ID' }, corsHeaders, 400);
+      }
+
+      try {
+        await attackerDb.deleteAttacker(id);
+        return jsonResponse({ success: true }, corsHeaders);
+      } catch (error) {
+        return jsonResponse(
+          { error: 'Delete failed', message: String(error) },
           corsHeaders,
           500
         );
