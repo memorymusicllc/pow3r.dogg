@@ -1,6 +1,8 @@
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useThemeStore } from '../stores/theme-store';
+import { useAuthStore } from '../stores/auth-store';
+import AuthBanner from './AuthBanner';
 import {
   HomeIcon,
   MagnifyingGlassIcon,
@@ -16,6 +18,22 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const { theme, setTheme } = useThemeStore();
+  const { checkAuth, setAuthError } = useAuthStore();
+
+  useEffect(() => {
+    checkAuth();
+    
+    // Listen for auth-required events from API client
+    const handleAuthRequired = (event: CustomEvent) => {
+      setAuthError(event.detail.message);
+    };
+    
+    window.addEventListener('auth-required', handleAuthRequired as EventListener);
+    
+    return () => {
+      window.removeEventListener('auth-required', handleAuthRequired as EventListener);
+    };
+  }, [checkAuth, setAuthError]);
 
   const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: HomeIcon },
@@ -76,6 +94,7 @@ export default function Layout({ children }: LayoutProps) {
 
         {/* Main Content */}
         <main className="flex-1 p-6 overflow-auto">
+          <AuthBanner />
           {children}
         </main>
       </div>

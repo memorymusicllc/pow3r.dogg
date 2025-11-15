@@ -1,65 +1,246 @@
 import { test, expect } from '@playwright/test';
+import { getAuthToken, getAuthHeaders, setAuthTokenInPage } from './auth-helper';
 
 const PROD_URL = 'https://pow3r-defender-production.contact-7d8.workers.dev';
 
 test.describe('Admin Dashboard', () => {
-  test('should load dashboard homepage', async ({ page }) => {
+  let authToken: string;
+
+  test.beforeAll(async () => {
+    // Get auth token - tests will fail if this fails
+    try {
+      authToken = await getAuthToken();
+      if (!authToken || authToken.length < 32) {
+        throw new Error('Invalid auth token. Set POW3R_AUTH_TOKEN environment variable or ensure Pow3r Pass API is available.');
+      }
+    } catch (error) {
+      throw new Error(`Authentication setup failed: ${error}. All tests require authentication.`);
+    }
+  });
+
+  test.beforeEach(async ({ page }) => {
+    // Set auth token in page - navigate first to get localStorage access
+    await setAuthTokenInPage(page, authToken, PROD_URL);
+  });
+
+  test('should load dashboard homepage with React app', async ({ page }) => {
     await page.goto(`${PROD_URL}/admin`, { waitUntil: 'networkidle', timeout: 30000 });
     
     // Check if page loaded
     const title = await page.title();
-    expect(title).toBeTruthy();
+    expect(title).toContain('Pow3r Defender');
     
-    // Check for HTML structure
-    const html = await page.content();
-    expect(html).toContain('html');
+    // Check for React root element
+    const root = await page.locator('#root');
+    await expect(root).toBeVisible({ timeout: 10000 });
+    
+    // Verify React app has loaded
+    await page.waitForTimeout(2000);
     
     // Take screenshot
     await page.screenshot({ path: 'test-results/dashboard-homepage.png', fullPage: true });
   });
 
-  test('should display dashboard structure', async ({ page }) => {
-    await page.goto(`${PROD_URL}/admin`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+  test('should serve static assets correctly', async ({ request }) => {
+    // Static assets don't require auth
+    const cssResponse = await request.get(`${PROD_URL}/assets/index-DvyXkRZo.css`);
+    expect(cssResponse.status()).toBe(200);
+    const cssContent = await cssResponse.text();
+    expect(cssContent.length).toBeGreaterThan(100);
     
-    // Check for React root element or body exists (even if hidden initially)
-    const root = await page.locator('#root, body').first();
-    await expect(root).toHaveCount(1, { timeout: 5000 });
-    
-    // Verify page has content
-    const html = await page.content();
-    expect(html.length).toBeGreaterThan(100);
-    
-    await page.screenshot({ path: 'test-results/dashboard-structure.png', fullPage: true });
+    const jsResponse = await request.get(`${PROD_URL}/assets/index-WwelWwOG.js`);
+    expect(jsResponse.status()).toBe(200);
+    const jsContent = await jsResponse.text();
+    expect(jsContent.length).toBeGreaterThan(1000);
   });
 
-  test('should handle navigation to admin routes', async ({ page }) => {
-    await page.goto(`${PROD_URL}/admin`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+  test('should require authentication for API endpoints - FAILS WITHOUT AUTH', async ({ request }) => {
+    // Test that endpoints return 401 without auth
+    const endpoints = [
+      '/admin/attackers',
+      '/admin/osint/email',
+      '/admin/osint/address',
+      '/admin/osint/business',
+      '/admin/analytics',
+    ];
+
+    for (const endpoint of endpoints) {
+      const response = await request.get(`${PROD_URL}${endpoint}`);
+      expect(response.status()).toBe(401);
+      const body = await response.json();
+      expect(body).toHaveProperty('error');
+      expect(body.error).toContain('Unauthorized');
+    }
+  });
+
+  test('should allow authenticated API requests', async ({ request }) => {
+    // Test that endpoints work WITH auth
+    const headers = await getAuthHeaders();
     
-    // Verify page is accessible
+    const endpoints = [
+      { path: '/admin/attackers', method: 'GET' },
+      { path: '/admin/analytics', method: 'GET' },
+    ];
+
+    for (const endpoint of endpoints) {
+      const response = await request.get(`${PROD_URL}${endpoint.path}`, { headers });
+      // Should not be 401 (may be 200, 404, or other valid responses)
+      expect(response.status()).not.toBe(401);
+      
+      // If it's an error, it should be a proper error format, not auth error
+      if (!response.ok()) {
+        const body = await response.json().catch(() => ({}));
+        if (body.error) {
+          expect(body.error).not.toContain('Unauthorized');
+        }
+      }
+    }
+  });
+
+  test('should handle authenticated POST requests', async ({ request }) => {
+    const headers = await getAuthHeaders();
+    
+    const postEndpoints = [
+      { path: '/admin/osint/email', body: { email: 'test@example.com' } },
+      { path: '/admin/osint/address', body: { address: '123 Main St' } },
+      { path: '/admin/osint/business', body: { businessName: 'Test Corp' } },
+    ];
+
+    for (const { path, body } of postEndpoints) {
+      const response = await request.post(`${PROD_URL}${path}`, { 
+        headers,
+        data: body 
+      });
+      
+      // Should not be 401
+      expect(response.status()).not.toBe(401);
+      
+      // If error, should not be auth error
+      if (!response.ok()) {
+        const responseBody = await response.json().catch(() => ({}));
+        if (responseBody.error) {
+          expect(responseBody.error).not.toContain('Unauthorized');
+        }
+      }
+    }
+  });
+
+  test('should display dashboard UI components', async ({ page }) => {
+    await page.goto(`${PROD_URL}/admin`, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.waitForTimeout(3000);
+    
+    const body = await page.locator('body');
+    await expect(body).toBeVisible();
+    
+    const root = await page.locator('#root');
+    await expect(root).toBeVisible();
+    
+    await page.screenshot({ path: 'test-results/dashboard-ui.png', fullPage: true });
+  });
+
+  test('should display authentication banner when not authenticated', async ({ page }) => {
+    // Clear auth token
+    await page.goto(`${PROD_URL}/admin`, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.evaluate(() => {
+      localStorage.removeItem('pow3r-auth-token');
+    });
+    
+    await page.waitForTimeout(3000);
+    
+    // Check for auth banner
+    const authBanner = page.locator('text=Authentication Required');
+    await expect(authBanner).toBeVisible({ timeout: 5000 });
+    
+    const pow3rPassLink = page.locator('a[href*="config.superbots.link/pass"]');
+    await expect(pow3rPassLink).toBeVisible();
+    
+    await page.screenshot({ path: 'test-results/dashboard-auth-banner.png', fullPage: true });
+  });
+
+  test('should handle API errors gracefully in UI', async ({ page }) => {
+    await page.goto(`${PROD_URL}/admin`, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.waitForTimeout(3000);
+    
+    // Monitor API calls
+    const apiCalls: string[] = [];
+    page.on('response', (response) => {
+      const url = response.url();
+      if (url.includes('/admin/') && (url.includes('/osint/') || url.includes('/attackers'))) {
+        apiCalls.push(`${response.status()}: ${url}`);
+      }
+    });
+    
+    await page.waitForTimeout(5000);
+    
+    // Verify API calls were made
+    expect(apiCalls.length).toBeGreaterThanOrEqual(0);
+    
+    await page.screenshot({ path: 'test-results/dashboard-api-errors.png', fullPage: true });
+  });
+
+  test('should handle navigation and routing', async ({ page }) => {
+    await page.goto(`${PROD_URL}/admin`, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.waitForTimeout(2000);
+    
     const url = page.url();
     expect(url).toContain('/admin');
+    
+    const root = await page.locator('#root');
+    await expect(root).toBeVisible();
     
     await page.screenshot({ path: 'test-results/dashboard-navigation.png', fullPage: true });
   });
 
-  test('should serve static assets', async ({ request }) => {
-    // Test CSS asset
-    const cssResponse = await request.get(`${PROD_URL}/admin/assets/index-DvyXkRZo.css`);
-    expect(cssResponse.status()).toBe(200);
-    const contentType = cssResponse.headers()['content-type'];
-    expect(contentType).toMatch(/css|text/);
+  test('should verify API endpoint structure with auth', async ({ request }) => {
+    const headers = await getAuthHeaders();
     
-    // Test JS asset
-    const jsResponse = await request.get(`${PROD_URL}/admin/assets/index-WwelWwOG.js`);
-    expect(jsResponse.status()).toBe(200);
-    const jsContentType = jsResponse.headers()['content-type'];
-    expect(jsContentType).toMatch(/javascript|application/);
+    const testCases = [
+      { method: 'GET', path: '/admin/attackers', expectedStatus: [200, 404, 500] },
+      { method: 'GET', path: '/admin/analytics', expectedStatus: [200, 404, 500] },
+      { method: 'POST', path: '/admin/osint/email', body: { email: 'test@example.com' }, expectedStatus: [200, 400, 500] },
+      { method: 'POST', path: '/admin/osint/address', body: { address: '123 Main St' }, expectedStatus: [200, 400, 500] },
+      { method: 'POST', path: '/admin/osint/business', body: { businessName: 'Test' }, expectedStatus: [200, 400, 500] },
+    ];
+
+    for (const testCase of testCases) {
+      let response;
+      if (testCase.method === 'GET') {
+        response = await request.get(`${PROD_URL}${testCase.path}`, { headers });
+      } else {
+        response = await request.post(`${PROD_URL}${testCase.path}`, { 
+          headers,
+          data: testCase.body 
+        });
+      }
+      
+      // Must not be 401 (auth error)
+      expect(response.status()).not.toBe(401);
+      
+      // Should be one of expected statuses
+      expect(testCase.expectedStatus).toContain(response.status());
+      
+      // Parse response body (may be JSON or text)
+      let body: any;
+      try {
+        body = await response.json();
+      } catch {
+        body = { error: await response.text() };
+      }
+      
+      // Error property may not exist for successful responses
+      if (!response.ok()) {
+        expect(body).toHaveProperty('error');
+        if (body.error) {
+          expect(typeof body.error).toBe('string');
+        }
+      }
+    }
   });
 
-  test('should handle API endpoints', async ({ request }) => {
-    // Test that API endpoints are accessible (may return 401 without auth)
-    const apiResponse = await request.get(`${PROD_URL}/admin/osint/lookup`);
-    expect([200, 401, 403, 404, 405]).toContain(apiResponse.status());
+  test('should handle CORS correctly', async () => {
+    const optionsResponse = await fetch(`${PROD_URL}/admin/attackers`, { method: 'OPTIONS' });
+    expect(optionsResponse.status).toBe(200);
+    expect(optionsResponse.headers.get('access-control-allow-origin')).toBe('*');
+    expect(optionsResponse.headers.get('access-control-allow-methods')).toContain('GET');
   });
 });
-

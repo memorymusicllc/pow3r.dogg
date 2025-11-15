@@ -1,3 +1,5 @@
+import { pow3rPassService } from '../services/pow3r-pass';
+
 const API_BASE = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE) || 
   (typeof window !== 'undefined' ? window.location.origin : '');
 
@@ -12,9 +14,19 @@ export class ApiClient {
 
   constructor(baseUrl: string = API_BASE) {
     this.baseUrl = baseUrl;
-    // Get auth token from localStorage or Pow3r Pass
+    // Get auth token from Pow3r Pass service
+    this.initializeAuth();
+  }
+
+  private async initializeAuth() {
     if (typeof window !== 'undefined') {
-      this.authToken = localStorage.getItem('pow3r-auth-token');
+      try {
+        this.authToken = await pow3rPassService.getAuthToken();
+      } catch (error) {
+        console.warn('Failed to get auth token from Pow3r Pass:', error);
+        // Fallback to localStorage
+        this.authToken = localStorage.getItem('pow3r-auth-token');
+      }
     }
   }
 
@@ -38,10 +50,21 @@ export class ApiClient {
     });
 
     if (!response.ok) {
+      const errorText = await response.text().catch(() => 'Unknown error');
       const error: ApiError = {
-        message: await response.text().catch(() => 'Unknown error'),
+        message: errorText,
         status: response.status,
       };
+      
+      // Handle 401 Unauthorized - trigger auth check
+      if (response.status === 401) {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('auth-required', { 
+            detail: { message: 'Authentication required. Please authenticate via Pow3r Pass.' }
+          }));
+        }
+      }
+      
       throw error;
     }
 
@@ -74,10 +97,21 @@ export class ApiClient {
     });
 
     if (!response.ok) {
+      const errorText = await response.text().catch(() => 'Unknown error');
       const error: ApiError = {
-        message: await response.text().catch(() => 'Unknown error'),
+        message: errorText,
         status: response.status,
       };
+      
+      // Handle 401 Unauthorized - trigger auth check
+      if (response.status === 401) {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('auth-required', { 
+            detail: { message: 'Authentication required. Please authenticate via Pow3r Pass.' }
+          }));
+        }
+      }
+      
       throw error;
     }
 
