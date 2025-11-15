@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
 import ReactFlow, {
   Node,
   Edge,
@@ -21,8 +20,11 @@ interface KnowledgeGraphData {
   facts: Array<{ subject: string; predicate: string; object: string }>;
 }
 
-export default function KnowledgeGraphView() {
-  const { attackerId } = useParams();
+interface KnowledgeGraphViewProps {
+  attackerId?: string | null;
+}
+
+export default function KnowledgeGraphView({ attackerId }: KnowledgeGraphViewProps = {}) {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<KnowledgeGraphData | null>(null);
   const [error, setError] = useState<string | null>(null);

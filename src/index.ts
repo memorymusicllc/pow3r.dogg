@@ -70,9 +70,15 @@ export default {
         return new Response(null, { status: 204, headers: corsHeaders });
       }
 
-      // PWA - serve minimal PWA
+      // PWA - redirect to unified dashboard
       if (url.pathname.startsWith('/pwa/')) {
-        if (url.pathname === '/pwa/' || url.pathname === '/pwa/index.html') {
+        // Redirect PWA to unified admin dashboard
+        return Response.redirect(`${url.origin}/admin`, 302);
+      }
+
+      // Legacy PWA route (kept for backwards compatibility)
+      if (url.pathname.startsWith('/pwa-legacy/')) {
+        if (url.pathname === '/pwa-legacy/' || url.pathname === '/pwa-legacy/index.html') {
           // Serve inline PWA HTML
           const apiBase = url.origin;
           const pwaHtml = `<!DOCTYPE html>

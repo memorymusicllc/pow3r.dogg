@@ -21,7 +21,11 @@ interface Attacker {
   investigationIds?: string[];
 }
 
-export default function AttackerDatabase() {
+interface AttackerDatabaseProps {
+  onAttackerSelect?: (attackerId: string) => void;
+}
+
+export default function AttackerDatabase({ onAttackerSelect }: AttackerDatabaseProps = {}) {
   const [attackers, setAttackers] = useState<Attacker[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -94,6 +98,9 @@ export default function AttackerDatabase() {
       metadata: attacker.metadata || {},
     });
     setShowDetailsDialog(true);
+    if (onAttackerSelect) {
+      onAttackerSelect(attacker.id);
+    }
   };
 
   const handleEdit = () => {

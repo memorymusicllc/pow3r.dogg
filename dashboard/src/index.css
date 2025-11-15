@@ -16,14 +16,41 @@
 }
 
 @layer utilities {
+  /* True Black Theme (Default) */
   .theme-true-black {
     @apply bg-true-black-bg text-true-black-text;
   }
+  .theme-true-black * {
+    @apply border-true-black-border;
+  }
+  
+  /* Light Theme */
   .theme-light {
     @apply bg-light-bg text-light-text;
   }
+  .theme-light * {
+    @apply border-light-border;
+  }
+  
+  /* Glass Theme (AR/HUD/Smart Mirrors) */
   .theme-glass {
     @apply bg-glass-bg text-glass-text backdrop-blur-md;
+  }
+  .theme-glass * {
+    @apply border-glass-border;
+  }
+  
+  /* Theme-aware utilities */
+  .theme-light\:bg-light-bg {
+    @media (prefers-color-scheme: light) {
+      background-color: var(--light-bg);
+    }
+  }
+  
+  .theme-light\:text-light-text {
+    @media (prefers-color-scheme: light) {
+      color: var(--light-text);
+    }
   }
 }
 
