@@ -121,18 +121,47 @@ export class Pow3rPassAuth {
   }
 
   /**
-   * Authenticate request
+   * Authenticate request with priority chain:
+   * 1. Pow3r Pass token from request
+   * 2. Cloudflare KV stored keys
+   * 3. Cloudflare AI Gateway token
    */
   async authenticate(request: Request): Promise<AuthResult> {
-    const token = Pow3rPassAuth.extractToken(request);
-    if (!token) {
-      return {
-        authenticated: false,
-        error: 'No authorization header',
-      };
+    // Priority 1: Extract token from request header
+    let token = Pow3rPassAuth.extractToken(request);
+    
+    if (token) {
+      return this.validateToken(token);
     }
 
-    return this.validateToken(token);
+    // Priority 2: Try Cloudflare KV stored keys
+    try {
+      const kvToken = await this.kv.get('pow3r:auth:token');
+      if (kvToken && kvToken.length >= 32) {
+        token = kvToken;
+        const result = await this.validateToken(token);
+        if (result.authenticated) {
+          return result;
+        }
+      }
+    } catch (error) {
+      console.warn('KV token lookup failed:', error);
+    }
+
+    // Priority 3: Try Cloudflare AI Gateway token from env
+    if (this.env.CLOUDFLARE_AI_TOKEN && this.env.CLOUDFLARE_AI_TOKEN.length >= 32) {
+      token = this.env.CLOUDFLARE_AI_TOKEN;
+      const result = await this.validateToken(token);
+      if (result.authenticated) {
+        return result;
+      }
+    }
+
+    // All methods failed
+    return {
+      authenticated: false,
+      error: 'No valid authentication token found. Please authenticate via Pow3r Pass, set token in KV, or configure CLOUDFLARE_AI_TOKEN.',
+    };
   }
 }
 

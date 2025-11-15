@@ -28,8 +28,11 @@ export class Pow3rPassService {
   }
 
   /**
-   * Get authentication token from Pow3r Pass
-   * Falls back to localStorage if API unavailable
+   * Get authentication token with priority chain:
+   * 1. Pow3r Pass API
+   * 2. Cloudflare KV stored keys (via worker endpoint)
+   * 3. Cloudflare AI Gateway token
+   * 4. localStorage (fallback)
    */
   async getAuthToken(): Promise<string | null> {
     // Check cache first
@@ -37,17 +40,7 @@ export class Pow3rPassService {
       return this.cachedToken;
     }
 
-    // Check localStorage
-    if (typeof window !== 'undefined') {
-      const localToken = localStorage.getItem('pow3r-auth-token');
-      if (localToken && localToken.length >= 32) {
-        this.cachedToken = localToken;
-        this.tokenExpiry = Date.now() + 3600000; // 1 hour cache
-        return localToken;
-      }
-    }
-
-    // Try to fetch from Pow3r Pass API
+    // Priority 1: Try Pow3r Pass API
     try {
       const response = await fetch(`${POW3R_PASS_BASE}/token`, {
         method: 'GET',
@@ -62,7 +55,6 @@ export class Pow3rPassService {
           this.cachedToken = data.data.token;
           this.tokenExpiry = Date.now() + 3600000; // 1 hour cache
           
-          // Store in localStorage
           if (typeof window !== 'undefined') {
             localStorage.setItem('pow3r-auth-token', this.cachedToken);
           }
@@ -71,7 +63,71 @@ export class Pow3rPassService {
         }
       }
     } catch (error) {
-      console.warn('Pow3r Pass API unavailable, using localStorage fallback:', error);
+      console.warn('Pow3r Pass API unavailable, trying fallbacks:', error);
+    }
+
+    // Priority 2: Try Cloudflare KV stored keys (via worker endpoint)
+    try {
+      const workerUrl = typeof window !== 'undefined' ? window.location.origin : '';
+      const response = await fetch(`${workerUrl}/admin/auth/kv-token`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json() as { success: boolean; token?: string };
+        if (data.success && data.token && data.token.length >= 32) {
+          this.cachedToken = data.token;
+          this.tokenExpiry = Date.now() + 3600000;
+          
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('pow3r-auth-token', this.cachedToken);
+          }
+          
+          return this.cachedToken;
+        }
+      }
+    } catch (error) {
+      console.warn('Cloudflare KV token unavailable, trying AI Gateway:', error);
+    }
+
+    // Priority 3: Try Cloudflare AI Gateway token
+    try {
+      const workerUrl = typeof window !== 'undefined' ? window.location.origin : '';
+      const response = await fetch(`${workerUrl}/admin/auth/ai-gateway-token`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json() as { success: boolean; token?: string };
+        if (data.success && data.token && data.token.length >= 32) {
+          this.cachedToken = data.token;
+          this.tokenExpiry = Date.now() + 3600000;
+          
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('pow3r-auth-token', this.cachedToken);
+          }
+          
+          return this.cachedToken;
+        }
+      }
+    } catch (error) {
+      console.warn('Cloudflare AI Gateway token unavailable, using localStorage:', error);
+    }
+
+    // Priority 4: Fallback to localStorage
+    if (typeof window !== 'undefined') {
+      const localToken = localStorage.getItem('pow3r-auth-token');
+      if (localToken && localToken.length >= 32) {
+        this.cachedToken = localToken;
+        this.tokenExpiry = Date.now() + 3600000;
+        return localToken;
+      }
     }
 
     return null;

@@ -34,7 +34,55 @@ export async function handleAdmin(
 ): Promise<Response> {
   const url = new URL(request.url);
 
-  // Authenticate all admin endpoints
+  // Auth endpoints (no auth required for these)
+  if (url.pathname === '/admin/auth/kv-token' && request.method === 'GET') {
+    try {
+      // Get token from KV
+      const kvToken = await env.CONFIG_STORE.get('pow3r:auth:token');
+      if (kvToken && kvToken.length >= 32) {
+        return jsonResponse(
+          { success: true, token: kvToken, source: 'kv' },
+          corsHeaders
+        );
+      }
+      return jsonResponse(
+        { success: false, error: 'No KV token found' },
+        corsHeaders,
+        404
+      );
+    } catch (error) {
+      return jsonResponse(
+        { success: false, error: String(error) },
+        corsHeaders,
+        500
+      );
+    }
+  }
+
+  if (url.pathname === '/admin/auth/ai-gateway-token' && request.method === 'GET') {
+    try {
+      // Get token from env (Cloudflare AI Gateway)
+      if (env.CLOUDFLARE_AI_TOKEN && env.CLOUDFLARE_AI_TOKEN.length >= 32) {
+        return jsonResponse(
+          { success: true, token: env.CLOUDFLARE_AI_TOKEN, source: 'ai-gateway' },
+          corsHeaders
+        );
+      }
+      return jsonResponse(
+        { success: false, error: 'No AI Gateway token configured' },
+        corsHeaders,
+        404
+      );
+    } catch (error) {
+      return jsonResponse(
+        { success: false, error: String(error) },
+        corsHeaders,
+        500
+      );
+    }
+  }
+
+  // Authenticate all other admin endpoints
   const auth = new Pow3rPassAuth(env);
   const authResult = await auth.authenticate(request);
   if (!authResult.authenticated) {
