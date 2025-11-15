@@ -1,0 +1,2340 @@
+# ============================================================================
+# FRAUD COMMUNICATION GUARD AGENT CONFIGURATION
+# ============================================================================
+# Version: 1.0.0
+# Date: 2025-11-15
+# Classification: Internal Security Architecture - Defensive Research Prototype
+# 
+# This YAML configuration defines a comprehensive Fraud Communication Guard
+# system that combines:
+# - Fraud detection and investigation capabilities
+# - Declarative, config-driven architecture
+# - CloudFlare infrastructure (Workers, Vectorize, MCP, D1, R2, KV)
+# - React + TypeScript + Vite frontend
+# - MCP server integrations
+# - POW3R_PASS authentication
+# - Guardian validation system
+# - Self-aware observability substrate
+# ============================================================================
+
+agent_metadata:
+  name: "Fraud Communication Guard (FCG)"
+  version: "1.0.0"
+  classification: "Defensive Security Research Prototype"
+  purpose: "Authorized fraud investigation, user protection, and legal evidence collection"
+  author: "Principal Security Architect, AI Systems Engineering Team"
+  last_updated: "2025-11-15"
+  
+  legal_framework:
+    use_case: "Defensive investigation of active fraud attempts targeting organization users"
+    authorization_required: true
+    constraints:
+      - "No offensive operations or unauthorized access"
+      - "Privacy compliance: GDPR, CCPA, ECPA"
+      - "Evidence collection with chain of custody"
+      - "Data minimization and retention policies"
+      - "Transparency except where legally authorized for covert collection"
+  
+  success_criteria:
+    fraud_classification_accuracy: ">95%"
+    attacker_reidentification_rate: ">85%"
+    vpn_detection_accuracy: ">95%"
+    false_positive_rate: "<2%"
+    analysis_latency: "<3s"
+    evidence_admissibility: "100%"
+
+# ============================================================================
+# SYSTEM ARCHITECTURE
+# ============================================================================
+
+system_architecture:
+  paradigm: "Declarative Self-Aware System"
+  description: |
+    Truly autonomous AI agents cannot effectively maintain software systems 
+    designed for human observability. This system implements a Semantic 
+    Observability Substrate that provides a machine-readable, real-time 
+    "Digital Twin" of the application's runtime state.
+  
+  core_principles:
+    - name: "Config-as-Code"
+      description: "Everything uses the same config schema - app, UI, data, workflows, knowledge graphs"
+      implementation: "All components are unbound from data and style, controlled entirely by configuration"
+    
+    - name: "Deep Semantic Observability"
+      description: "Comprehensive instrumentation with structured events, not logs"
+      implementation: "OpenTelemetry traces, high-cardinality structured events (JSON), LLM-specific telemetry"
+    
+    - name: "Dynamic Topology Inference"
+      description: "Real-time Digital Twin of the running software"
+      implementation: "Causal graphs inferred from traffic, automated critical path analysis"
+    
+    - name: "Composable Declarative Runtime"
+      description: "Atomic Executors (Sparks) orchestrated by declarative schemas"
+      implementation: "Hyper-modular architecture where business logic is pure functions wired by config"
+    
+    - name: "Guardian Validation"
+      description: "Constitutional compliance enforcement through automated validation"
+      implementation: "5-gate validation system for all changes: schema, mock code, tests, config, law"
+    
+    - name: "Zero-Trust Evidence Chain"
+      description: "Forensically sound evidence with cryptographic integrity"
+      implementation: "Hash-on-write, append-only logs, blockchain-backed audit trail"
+  
+  architectural_layers:
+    - layer: "External Threat Space"
+      description: "Fraudulent actors, phishing infrastructure, anonymized networks"
+      trust_level: "untrusted"
+    
+    - layer: "Communication Ingest Layer"
+      components: ["MTA", "API Webhooks", "Social Media Integrations"]
+      description: "Entry point for all communications (email, SMS, web forms, social DMs)"
+      trust_boundary: "External Trust Boundary - all data sanitized and validated"
+    
+    - layer: "Analysis & Attribution Layer"
+      components:
+        - "Device & Network Attribution Engine"
+        - "OSINT & Intelligence Worker"
+        - "Communication Guard & Link/Doc Scanner"
+      description: "Parallel processing of fingerprinting, OSINT, and content analysis"
+      trust_boundary: "Processing Trust Boundary - verified data only"
+    
+    - layer: "AI Analysis & Scoring Layer"
+      components: ["ML Risk Models", "NLP Content Analysis", "Explainability Engine"]
+      description: "Intelligent orchestration and classification"
+    
+    - layer: "Evidence & Legal Layer"
+      components:
+        - "Evidence Vault (WORM storage)"
+        - "Chain-of-Custody Logger"
+        - "Analyst Dashboard"
+        - "Legal Dashboard"
+      description: "Forensically sound evidence management and human interfaces"
+      trust_boundary: "Human Interface Trust Boundary - RBAC, MFA, audit logging"
+
+  data_flows:
+    - flow: "Ingest → Attribution"
+      input: "Raw communication metadata (sender IP, device headers, timestamps)"
+      processing: "Device fingerprinting, geolocation, VPN/proxy detection"
+      output: "Persistent Device ID (PDID), enriched network context"
+    
+    - flow: "Ingest → OSINT"
+      input: "Email addresses, phone numbers, domain names, social handles"
+      processing: "Reverse lookups, WHOIS, breach database checks, social profiling"
+      output: "Attacker Knowledge Card with identity graph and risk indicators"
+    
+    - flow: "Ingest → Communication Guard"
+      input: "Message content, embedded URLs, attachments"
+      processing: "Link scanning, document sandboxing, reputation checks"
+      output: "Safe/unsafe/suspicious verdict with IOCs"
+    
+    - flow: "All → AI Analysis"
+      input: "Aggregated data from attribution, OSINT, content scanning"
+      processing: "ML classification, anomaly detection, behavioral pattern matching"
+      output: "Risk score (0-100), classification label, explainability report"
+    
+    - flow: "AI Analysis → Evidence Vault"
+      input: "All investigative artifacts, model decisions, human annotations"
+      processing: "Cryptographic hashing, timestamping, chain-of-custody logging"
+      output: "Immutable evidence packages, audit trails"
+    
+    - flow: "Evidence Vault → Dashboards"
+      input: "Evidence packages, case data, OSINT findings"
+      processing: "Role-based access control, PII masking, report generation"
+      output: "Analyst workspace, legal reports, chain-of-custody exports"
+
+# ============================================================================
+# TECH STACK
+# ============================================================================
+
+tech_stack:
+  infrastructure:
+    provider: "CloudFlare"
+    services:
+      workers:
+        description: "Serverless compute for API endpoints and MCP servers"
+        use_cases:
+          - "POW3R_PASS credential management API"
+          - "Custom MCP servers (Replicate, Gemini, Claude, GitHub, etc.)"
+          - "Communication ingest webhooks"
+          - "OSINT worker orchestration"
+      
+      vectorize:
+        description: "Vector database for semantic search and embeddings"
+        use_cases:
+          - "Knowledge graph embeddings"
+          - "Document similarity search"
+          - "Attacker profile clustering"
+          - "Communication content analysis"
+      
+      d1:
+        description: "SQL database (SQLite edge)"
+        use_cases:
+          - "XMAP version history and time-series"
+          - "Evidence chain-of-custody logs"
+          - "Case management database"
+          - "User activity audit logs"
+      
+      r2:
+        description: "Object storage (S3-compatible)"
+        use_cases:
+          - "Evidence vault encrypted blob storage"
+          - "Communication archives (emails, attachments)"
+          - "OSINT raw data and screenshots"
+          - "Legal report exports and evidence packages"
+      
+      kv:
+        description: "Key-value store for fast lookups"
+        use_cases:
+          - "POW3R_PASS credential storage (CREDENTIAL_STORE)"
+          - "Config store for pow3r.v4.config.json"
+          - "Device fingerprint cache"
+          - "OSINT lookup cache (5-minute TTL)"
+          - "Session state and rate limiting"
+      
+      durable_objects:
+        description: "Stateful coordination primitives"
+        use_cases:
+          - "Real-time WebSocket connections for dashboards"
+          - "Distributed locking for evidence writes"
+          - "Live collaboration for analyst investigations"
+      
+      queues:
+        description: "Message queues for async processing"
+        use_cases:
+          - "OSINT enrichment task queue"
+          - "Document sandbox analysis queue"
+          - "AI analysis batch processing"
+          - "Evidence export job queue"
+      
+      ai_gateway:
+        description: "Unified gateway for AI model APIs"
+        use_cases:
+          - "LLM request routing (GPT-4, Claude, Llama)"
+          - "Prompt logging and caching"
+          - "Cost tracking and rate limiting"
+          - "Model fallback and load balancing"
+      
+      knowledge_graph_rag:
+        description: "Retrieval-augmented generation with knowledge graphs"
+        use_cases:
+          - "Attacker relationship mapping"
+          - "Case linkage and pattern detection"
+          - "OSINT fact verification"
+          - "Evidence cross-referencing"
+  
+  frontend:
+    framework: "React + TypeScript + Vite"
+    description: "Fast, type-safe, modern frontend development"
+    libraries:
+      react: "^18.3.0"
+      typescript: "^5.6.0"
+      vite: "^6.0.0"
+      react_flow: "^11.11.0 - Node-based graph visualizations"
+      radix_ui: "Latest - Accessible component primitives"
+      zustand: "^5.0.0 - State management"
+      tailwind_css: "^3.4.0 - Utility-first styling"
+      threejs: "^0.170.0 - 3D visualizations and AR/VR support"
+    
+    themes:
+      dark:
+        name: "True Black (Default)"
+        colors:
+          background: "#000000"
+          surface: "#0a0a0a"
+          primary: "#00ff00"
+          secondary: "#00aaff"
+          accent: "#ff00ff"
+          text: "#ffffff"
+          text_secondary: "#aaaaaa"
+        description: "High contrast, OLED-friendly, cyberpunk aesthetic"
+      
+      light:
+        name: "Light"
+        colors:
+          background: "#ffffff"
+          surface: "#f5f5f5"
+          primary: "#00aa00"
+          secondary: "#0088cc"
+          accent: "#cc00cc"
+          text: "#000000"
+          text_secondary: "#666666"
+        description: "Clean, professional, high readability"
+      
+      glass:
+        name: "Glass (AR/HUD/Smart Mirrors)"
+        colors:
+          background: "rgba(0, 0, 0, 0.3)"
+          surface: "rgba(255, 255, 255, 0.1)"
+          primary: "#00ff00"
+          secondary: "#00aaff"
+          accent: "#ff00ff"
+          text: "#ffffff"
+          text_secondary: "rgba(255, 255, 255, 0.7)"
+        effects:
+          backdrop_filter: "blur(10px)"
+          border: "1px solid rgba(255, 255, 255, 0.2)"
+        description: "Translucent, futuristic, AR-ready"
+    
+    typography:
+      headers: "Rock Salt"
+      body: "Courier Prime"
+      monospace: "Courier Prime"
+      icons: "Heroicons"
+    
+    component_philosophy:
+      - "All components support 2D, 3D, React Flow Canvas rendering"
+      - "All components accept observational data and adapt to context"
+      - "All components are theme-aware and support dark/light/glass"
+      - "All components are unbound from data and style (controlled by config)"
+      - "All components emit structured events for observability"
+  
+  backend:
+    runtime: "CloudFlare Workers (V8 Isolates)"
+    language: "TypeScript"
+    frameworks:
+      hono: "^4.0.0 - Lightweight web framework"
+      drizzle_orm: "^0.30.0 - Type-safe ORM for D1"
+      zod: "^3.22.0 - Schema validation"
+    
+    observability:
+      standard: "OpenTelemetry"
+      implementation: |
+        - Every operation is a "span" in a trace
+        - High-cardinality structured events (JSON)
+        - LLM calls include: prompt, model, tokens, latency, cost
+        - Device fingerprints tracked across sessions
+        - OSINT lookups cached and logged
+        - Evidence writes include SHA-256 hash verification
+      
+      logging_format: |
+        {
+          "log_version": "1.0",
+          "event_type": "string",
+          "event_id": "uuid-v4",
+          "timestamp_utc": "ISO8601",
+          "hash_sha256": "hash of entire log entry",
+          "collector_id": "node identifier",
+          "subject": {...},
+          "raw_data": {...},
+          "enrichment": {...},
+          "chain_of_custody": {
+            "collected_by": "system|analyst_id",
+            "verified_by": "analyst_id|null",
+            "accessed_by": [],
+            "legal_hold": false
+          }
+        }
+  
+  database:
+    primary: "CloudFlare D1 (SQLite)"
+    schema_management: "Drizzle ORM + migrations"
+    tables:
+      evidence_artifacts:
+        description: "Core evidence storage with cryptographic hashes"
+        columns:
+          - "evidence_id UUID PRIMARY KEY"
+          - "type TEXT (email_communication, device_fingerprint, osint_report, etc.)"
+          - "status TEXT (collected, analyzed, reviewed, exported)"
+          - "timestamp_utc DATETIME"
+          - "collected_by TEXT"
+          - "content_hash_sha256 TEXT"
+          - "content_size_bytes INTEGER"
+          - "encryption_key_id TEXT"
+          - "storage_location TEXT (R2 path)"
+          - "case_id TEXT"
+      
+      custody_chain:
+        description: "Immutable chain-of-custody log"
+        columns:
+          - "chain_id UUID PRIMARY KEY"
+          - "evidence_id UUID FOREIGN KEY"
+          - "status TEXT"
+          - "actor TEXT (system|analyst_id)"
+          - "action TEXT (collect, analyze, review, export)"
+          - "timestamp_utc DATETIME"
+          - "hash_verified BOOLEAN"
+          - "notes TEXT"
+      
+      access_log:
+        description: "Append-only access audit log"
+        columns:
+          - "log_id UUID PRIMARY KEY"
+          - "evidence_id UUID FOREIGN KEY"
+          - "user_id TEXT"
+          - "action TEXT (view, export, annotate)"
+          - "timestamp_utc DATETIME"
+          - "source_ip TEXT"
+          - "reason_code TEXT"
+      
+      device_fingerprints:
+        description: "Persistent device identifiers and attribution"
+        columns:
+          - "pdid TEXT PRIMARY KEY (SHA-256 hash)"
+          - "first_seen DATETIME"
+          - "last_seen DATETIME"
+          - "session_count INTEGER"
+          - "fingerprint_data JSON"
+          - "attribution_data JSON (geolocation, ASN, VPN detection)"
+          - "risk_score REAL"
+      
+      attacker_profiles:
+        description: "OSINT-enriched attacker knowledge cards"
+        columns:
+          - "profile_id UUID PRIMARY KEY"
+          - "primary_identifier TEXT"
+          - "pdid TEXT FOREIGN KEY"
+          - "identity_graph JSON"
+          - "risk_indicators JSON"
+          - "confidence_score REAL"
+          - "last_updated DATETIME"
+      
+      cases:
+        description: "Investigation case management"
+        columns:
+          - "case_id TEXT PRIMARY KEY"
+          - "title TEXT"
+          - "status TEXT (active, closed, legal_hold)"
+          - "created_at DATETIME"
+          - "assigned_to TEXT"
+          - "risk_level TEXT (low, medium, high, critical)"
+          - "evidence_count INTEGER"
+          - "notes TEXT"
+      
+      xmap_history:
+        description: "XMAP version history for time-series replay"
+        columns:
+          - "version_id UUID PRIMARY KEY"
+          - "repo_name TEXT"
+          - "xmap_data JSON"
+          - "timestamp_utc DATETIME"
+          - "change_type TEXT (update, merge, sync)"
+          - "changed_by TEXT"
+  
+  authentication:
+    system: "POW3R_PASS"
+    description: "Enterprise credential management - auth is never a thought while secure"
+    
+    api_endpoints:
+      base_url: "https://config.superbots.link/pass"
+      endpoints:
+        - path: "/credentials"
+          method: "GET"
+          description: "Get all available credentials"
+          response: |
+            {
+              "success": true,
+              "data": {
+                "credentials": {
+                  "gemini": "AIza...",
+                  "openai": "sk-...",
+                  "replicate": "r8_..."
+                },
+                "count": 10
+              }
+            }
+        
+        - path: "/credentials/:provider"
+          method: "GET"
+          description: "Get credential for specific provider"
+          response: |
+            {
+              "success": true,
+              "data": {
+                "provider": "gemini",
+                "value": "AIza...",
+                "source": "kv"
+              }
+            }
+        
+        - path: "/validate"
+          method: "POST"
+          description: "Validate credentials"
+          request: |
+            {
+              "provider": "gemini",
+              "credential": "AIza..."
+            }
+        
+        - path: "/health"
+          method: "GET"
+          description: "Health check"
+    
+    credential_priority:
+      1: "POW3R_PASS API (highest priority)"
+      2: "localStorage (user preferences)"
+      3: "Environment variables (build-time)"
+      4: "Defaults"
+    
+    storage:
+      kv_namespace: "CREDENTIAL_STORE"
+      encryption: "AES-256"
+      audit_logging: true
+    
+    security:
+      - "Credentials stored encrypted in KV"
+      - "CORS pre-configured for known domains"
+      - "Audit logging for all credential access"
+      - "No credentials exposed in client code"
+      - "Automatic fallback to local if API unavailable"
+
+# ============================================================================
+# MODULES
+# ============================================================================
+
+modules:
+  - module_id: "device_attribution"
+    name: "Device & Network Attribution Module"
+    version: "1.0.0"
+    description: "Persistent attacker identification through device fingerprinting and network analysis"
+    
+    responsibilities:
+      - "Create stable, privacy-conscious device identifiers (PDID)"
+      - "Detect VPN/proxy/Tor usage"
+      - "Geolocate attackers with city-level accuracy"
+      - "Link multiple sessions to single actor"
+    
+    inputs:
+      - "HTTP headers (User-Agent, Accept-*, DNT, etc.)"
+      - "Client IP address and connection metadata"
+      - "Browser API telemetry (Canvas, WebGL, Audio, Font enumeration)"
+      - "TLS fingerprinting data (cipher suites, extensions)"
+      - "Behavioral timing data (if available)"
+    
+    outputs:
+      persistent_device_id:
+        description: "SHA-256 hash of combined fingerprint vector"
+        example: "a7f3c9d2..."
+      
+      attribution_report:
+        schema:
+          pdid: "string"
+          ip_address: "string"
+          asn: "string"
+          isp: "string"
+          geolocation:
+            country: "string"
+            city: "string"
+            lat: "number"
+            lon: "number"
+          timezone_inferred: "string"
+          vpn_detected: "boolean"
+          vpn_provider: "string|null"
+          device_type: "string"
+          os: "string"
+          browser: "string"
+          fingerprint_confidence: "number (0-1)"
+          first_seen: "ISO8601"
+          last_seen: "ISO8601"
+          session_count: "number"
+    
+    success_criteria:
+      reidentification_accuracy: ">85%"
+      vpn_detection_accuracy: ">95%"
+      false_positive_rate: "<2%"
+      fingerprint_collision_rate: "<0.1%"
+      latency: "<500ms"
+    
+    tools:
+      fingerprinting:
+        - name: "FingerprintJS OSS"
+          license: "MIT"
+          capabilities: "50+ entropy sources (Canvas, WebGL, Audio, Fonts)"
+          integration: "JavaScript library, NPM package"
+        
+        - name: "p0f"
+          license: "LGPL"
+          capabilities: "Passive OS fingerprinting via packet analysis"
+          integration: "CLI tool, pcap analysis"
+      
+      geolocation:
+        - name: "MaxMind GeoIP2 (GeoLite2)"
+          license: "Creative Commons"
+          capabilities: "City-level IP geolocation, ASN lookup"
+          integration: "Local database with fast lookup"
+      
+      vpn_detection:
+        - name: "IPQualityScore (Free tier)"
+          capabilities: "VPN/proxy/Tor detection, 5k lookups/month"
+          integration: "REST API"
+        
+        - name: "IPHub.info"
+          capabilities: "Advanced VPN detection with risk scoring"
+          integration: "REST API"
+    
+    configuration:
+      fingerprint_components:
+        - "canvas_hash"
+        - "webgl_hash"
+        - "audio_hash"
+        - "fonts_enumeration"
+        - "screen_resolution"
+        - "timezone"
+        - "language"
+        - "user_agent"
+        - "platform"
+        - "device_memory"
+        - "hardware_concurrency"
+      
+      pdid_generation:
+        algorithm: "SHA-256"
+        input: "sorted_concat(fingerprint_components)"
+        uniqueness_threshold: 0.99
+      
+      session_linking:
+        time_window: "30 days"
+        confidence_threshold: 0.85
+      
+      vpn_detection:
+        providers:
+          - "IPQualityScore"
+          - "IPHub"
+        confidence_threshold: 0.9
+        cache_ttl: "1 hour"
+    
+    chain_of_custody:
+      log_format: "structured_json"
+      required_fields:
+        - "event_id"
+        - "timestamp_utc"
+        - "pdid"
+        - "raw_data"
+        - "enrichment"
+        - "hash_sha256"
+        - "collector_id"
+      storage: "D1 + R2 (encrypted)"
+
+  - module_id: "osint_intelligence"
+    name: "Identity & OSINT Intelligence Module"
+    version: "1.0.0"
+    description: "Automated background investigation and digital footprint mapping"
+    
+    responsibilities:
+      - "Aggregate data from public sources (social media, breach databases, WHOIS)"
+      - "Construct comprehensive Attacker Knowledge Cards"
+      - "Discover alternate identities and aliases"
+      - "Generate visual identity graphs"
+    
+    inputs:
+      - "Email addresses"
+      - "Phone numbers"
+      - "Social media handles"
+      - "Domain names"
+      - "Real names (if available)"
+      - "IP addresses"
+    
+    outputs:
+      attacker_knowledge_card:
+        schema:
+          primary_identifier: "string"
+          confidence_score: "number (0-1)"
+          identity_graph:
+            email_addresses: "string[]"
+            phone_numbers: "string[]"
+            social_media: "object"
+            domains_owned: "string[]"
+            aliases: "string[]"
+            locations: "string[]"
+          risk_indicators:
+            data_breach_exposure: "string[]"
+            domain_age: "string"
+            social_media_authenticity: "string"
+            known_fraud_associations: "string[]"
+          timeline: "array<{date, event}>"
+    
+    success_criteria:
+      enrichment_rate: ">80%"
+      enrichment_time: "<5 minutes"
+      data_sources: ">10"
+      alternate_identities_per_subject: ">3 average"
+    
+    tools:
+      osint_platforms:
+        - name: "SpiderFoot HX (Community)"
+          license: "MIT"
+          capabilities: "200+ data sources, graph visualization"
+          integration: "REST API, Python library"
+        
+        - name: "theHarvester"
+          license: "GPLv2"
+          capabilities: "Email, subdomain, employee enumeration"
+          integration: "CLI tool, subprocess"
+        
+        - name: "Maltego Community"
+          license: "Free (limited transforms)"
+          capabilities: "Visual link analysis, 100+ transforms"
+          integration: "Desktop app, custom transforms"
+        
+        - name: "MISP / OpenCTI"
+          license: "AGPL / Apache 2.0"
+          capabilities: "Threat intelligence aggregation, IOC management"
+          integration: "REST API, Python SDK"
+      
+      email_intelligence:
+        - name: "Hunter.io (Free: 25/month)"
+          capabilities: "Email finder and verifier"
+        - name: "EmailRep.io"
+          capabilities: "Email reputation from breach data"
+        - name: "Epieos"
+          capabilities: "Google Account OSINT"
+      
+      phone_intelligence:
+        - name: "Phoneinfoga"
+          license: "Open-source"
+          capabilities: "Phone OSINT with carrier lookup"
+        - name: "NumVerify"
+          capabilities: "Phone validation and carrier"
+      
+      domain_intelligence:
+        - name: "WhoisXML API"
+          capabilities: "WHOIS, reverse WHOIS, history"
+        - name: "URLScan.io"
+          capabilities: "Website scanning, screenshots"
+        - name: "crt.sh"
+          capabilities: "Certificate transparency logs"
+      
+      social_media_intelligence:
+        - name: "Sherlock"
+          license: "Open-source"
+          capabilities: "Username search across 300+ platforms"
+        - name: "Social-Analyzer"
+          license: "Open-source"
+          capabilities: "Profile analysis"
+      
+      breach_intelligence:
+        - name: "Have I Been Pwned API"
+          capabilities: "Breach exposure check"
+        - name: "DeHashed"
+          capabilities: "Leaked credentials search"
+    
+    configuration:
+      enrichment_workflow:
+        parallel_queries: true
+        timeout_per_source: "30s"
+        cache_ttl: "24 hours"
+        max_concurrent: 10
+      
+      confidence_scoring:
+        factors:
+          - "number_of_sources"
+          - "data_freshness"
+          - "cross_validation"
+          - "data_completeness"
+        weights:
+          sources: 0.3
+          freshness: 0.2
+          validation: 0.3
+          completeness: 0.2
+      
+      identity_graph:
+        max_depth: 3
+        link_confidence_threshold: 0.7
+        visualization: "Neo4j / D3.js"
+      
+      knowledge_card_layout:
+        sections:
+          - "identity_graph (visual)"
+          - "risk_indicators"
+          - "timeline"
+          - "osint_sources (expandable)"
+          - "actions (export, watchlist, deep_scan)"
+    
+    chain_of_custody:
+      source_attribution: "Every data point linked to source"
+      timestamp: "UTC timestamp for all queries"
+      hash_verification: "SHA-256 of raw OSINT data"
+      storage: "D1 (metadata) + R2 (raw data)"
+
+  - module_id: "communication_guard"
+    name: "Communication Guard & Link/Document Analysis Module"
+    version: "1.0.0"
+    description: "First line of defense - intercept and analyze all inbound communications"
+    
+    responsibilities:
+      - "Intercept 100% of inbound communications within defined channels"
+      - "Analyze URLs for phishing, redirect chains, brand impersonation"
+      - "Sandbox attachments for malware and exploits"
+      - "Provide safe preview for suspicious content"
+      - "Generate threat verdicts with high accuracy"
+    
+    inputs:
+      - "Email messages (full MIME, headers, body, attachments)"
+      - "SMS/Text messages"
+      - "Web form submissions"
+      - "Social media DMs"
+      - "Embedded content (URLs, images, documents)"
+    
+    outputs:
+      triage_verdict:
+        values: ["SAFE", "SUSPICIOUS", "MALICIOUS"]
+      
+      threat_report:
+        schema:
+          communication_id: "uuid"
+          verdict: "string"
+          confidence: "number (0-1)"
+          threats_detected:
+            - type: "string"
+              ioc: "string"
+              analysis: "object"
+          safe_preview_url: "string|null"
+          recommended_action: "string"
+    
+    success_criteria:
+      interception_rate: "100%"
+      phishing_detection_accuracy: ">98%"
+      false_positive_rate: "<0.5%"
+      malware_detection: ">95%"
+      analysis_latency: "<3s"
+    
+    tools:
+      url_analysis:
+        - name: "URLScan.io"
+          capabilities: "Website scanning, screenshots, DOM analysis"
+          integration: "REST API"
+        
+        - name: "VirusTotal"
+          capabilities: "70+ AV engines, threat intelligence"
+          integration: "REST API (500 requests/day free)"
+        
+        - name: "PhishTank"
+          capabilities: "Community phishing URL database"
+          integration: "REST API"
+        
+        - name: "Custom Redirect Analyzer"
+          implementation: "Python requests with redirect tracking"
+          capabilities: "Follows 302/301, logs each hop"
+      
+      document_analysis:
+        - name: "Cuckoo Sandbox"
+          license: "Open-source"
+          capabilities: "Automated malware analysis, behavioral analysis"
+          integration: "REST API, Python library"
+        
+        - name: "PeePDF"
+          license: "Open-source"
+          capabilities: "PDF structure analysis, JS extraction"
+          integration: "CLI tool"
+        
+        - name: "YARA Rules"
+          license: "Open-source"
+          capabilities: "Pattern matching for malware signatures"
+          integration: "Python yara-python"
+        
+        - name: "oletools"
+          license: "Open-source"
+          capabilities: "MS Office document analysis, macro detection"
+          integration: "CLI tools"
+      
+      email_security:
+        - name: "SpamAssassin"
+          license: "Open-source"
+          capabilities: "Email content analysis, scoring"
+          integration: "MTA filter or standalone"
+        
+        - name: "checkdmarc"
+          capabilities: "SPF/DKIM/DMARC validation"
+          integration: "Python library"
+      
+      sandbox:
+        - name: "Browserless.io"
+          capabilities: "Headless Chrome as a service"
+          integration: "Docker, REST API"
+    
+    configuration:
+      triage_rules:
+        safe:
+          - "No URLs OR all URLs in whitelist"
+          - "No attachments OR plain text only"
+          - "Email passes SPF/DKIM/DMARC"
+          - "Sender domain >1 year old"
+          - "No urgency language"
+        
+        suspicious:
+          - "URLs to domains <90 days old"
+          - "Email authentication partial fail"
+          - "Attachments with inconclusive sandbox"
+          - "Urgency language detected"
+          - "Sender not previously seen"
+        
+        malicious:
+          - "URL in known phishing database"
+          - "Attachment triggers malware signatures"
+          - "Email fails all authentication"
+          - "Redirect chain >3 hops"
+          - "Brand impersonation similarity >85%"
+      
+      redirect_chain_analysis:
+        max_hops: 10
+        timeout_per_hop: "5s"
+        suspicious_patterns:
+          - "Multiple URL shorteners"
+          - "Domain changes >2"
+          - "Suspicious TLDs (.tk, .ml, .ga)"
+      
+      attachment_sandbox:
+        timeout: "2 minutes"
+        file_types: ["pdf", "doc", "docx", "xls", "xlsx", "zip", "exe"]
+        behavior_monitoring:
+          - "File writes"
+          - "Network connections"
+          - "Registry modifications"
+          - "Process creation"
+      
+      safe_preview:
+        isolation: "Browserless container"
+        rendering:
+          - "Server-side only"
+          - "JavaScript disabled"
+          - "External resources blocked"
+          - "Static screenshot to user"
+        user_actions:
+          - "legitimate → release + whitelist"
+          - "fraud → quarantine + blocklist + notify"
+          - "unsure → escalate to analyst"
+    
+    chain_of_custody:
+      communication_archive: "Full MIME stored in R2"
+      analysis_artifacts: "Screenshots, sandbox logs, scan results"
+      user_feedback: "All interactions logged"
+      timestamp: "UTC for all events"
+
+  - module_id: "evidence_vault"
+    name: "Evidence Vault & Legal Workflow Module"
+    version: "1.0.0"
+    description: "Forensically sound evidence management with cryptographic integrity"
+    
+    responsibilities:
+      - "Maintain immutable chain of custody for all artifacts"
+      - "Cryptographic integrity verification (SHA-256)"
+      - "Role-based access control with audit logging"
+      - "Generate legal reports (PDF, CSV) for litigation"
+      - "Ensure compliance with NIST SP 800-86 guidelines"
+    
+    inputs:
+      - "Attribution reports"
+      - "OSINT data"
+      - "Communication scans"
+      - "AI analysis results"
+      - "Analyst annotations"
+    
+    outputs:
+      evidence_packages:
+        description: "Cryptographically sealed collections"
+        format: "ZIP with manifest + digital signature"
+      
+      chain_of_custody_reports:
+        description: "Detailed provenance documentation"
+        format: "JSON + PDF"
+      
+      legal_reports:
+        description: "Formatted for litigation"
+        formats: ["PDF", "CSV"]
+        sections:
+          - "Executive summary"
+          - "Chronological timeline"
+          - "Annotated evidence exhibits"
+          - "Analyst testimony support"
+      
+      audit_logs:
+        description: "Immutable record of all actions"
+        storage: "Append-only D1 table"
+    
+    success_criteria:
+      chain_of_custody_integrity: "100%"
+      zero_tolerance_breaks: true
+      retrieval_latency: "<1s"
+      compliance: "NIST SP 800-86"
+      legal_admissibility: "100%"
+    
+    evidence_lifecycle:
+      collection:
+        timestamp: "ISO8601 UTC"
+        collected_by: "system|analyst_id"
+        collection_method: "string"
+        content_hash: "SHA-256"
+        encryption: "AES-256"
+        storage_location: "R2 path"
+      
+      analysis:
+        analyzed_at: "ISO8601 UTC"
+        analyzed_by: "ai_engine|analyst_id"
+        analysis_results: "object"
+        integrity_verified: "boolean"
+        hash_verification: "object"
+      
+      review:
+        reviewed_at: "ISO8601 UTC"
+        reviewed_by: "analyst_id"
+        review_action: "string"
+        case_id: "string"
+        analyst_notes: "text"
+        access_log: "array"
+      
+      export:
+        exported_at: "ISO8601 UTC"
+        exported_by: "legal_team_id"
+        export_format: "pdf|csv|zip"
+        export_hash: "SHA-256"
+        legal_hold: "boolean"
+        retention_policy: "string"
+        certification: "digital_signature"
+    
+    configuration:
+      pii_separation:
+        tiers:
+          tier1:
+            name: "Public"
+            content: "Non-sensitive metadata"
+            access: "All roles"
+          
+          tier2:
+            name: "Confidential"
+            content: "Technical artifacts (fingerprints, IPs)"
+            access: "Analyst+, Investigator+, Legal+"
+          
+          tier3:
+            name: "Restricted"
+            content: "PII (names, emails, phone numbers)"
+            access: "Senior Analyst+, Investigator+, Legal+"
+          
+          tier4:
+            name: "Highly Restricted"
+            content: "Legal strategy, protected communications"
+            access: "Legal Team only"
+        
+        masking:
+          analyst_view: "f***ster@e***ple.com | +1-555-***-**23"
+          investigator_view: "fraudster@example.com | +1-555-012-3423"
+      
+      storage:
+        database: "D1 (metadata + chain of custody)"
+        object_storage: "R2 (encrypted blobs)"
+        encryption: "AES-256-GCM"
+        key_rotation: "90 days"
+        backup: "Cross-region replication"
+      
+      integrity_verification:
+        frequency: "Daily"
+        method: "Re-hash and compare"
+        alert_on_mismatch: true
+        blockchain_anchoring: "Optional (Ethereum)"
+      
+      retention_policy:
+        non_case_data: "90 days"
+        active_cases: "Indefinite"
+        legal_hold: "Indefinite + notify"
+        auto_purge: "Enabled"
+      
+      legal_report_templates:
+        pdf:
+          sections:
+            - "Cover page with case ID"
+            - "Executive summary"
+            - "Subject profile"
+            - "Evidence timeline (table)"
+            - "Chain of custody certification"
+            - "Technical appendix"
+            - "Analyst testimony support Q&A"
+          format: "A4, single-sided, numbered pages"
+          watermark: "CONFIDENTIAL - LEGAL USE ONLY"
+        
+        csv:
+          columns:
+            - "Evidence_ID"
+            - "Timestamp_UTC"
+            - "Event_Type"
+            - "Actor_PDID"
+            - "Source_IP"
+            - "Verdict"
+            - "Description"
+            - "File_Hash"
+            - "Chain_of_Custody_Verified"
+          encoding: "UTF-8"
+          delimiter: ","
+    
+    access_control:
+      authentication: "MFA required for all users"
+      authorization: "RBAC with attribute-based context"
+      audit_logging: "All actions logged with reason codes"
+      session_timeout: "15 minutes"
+
+  - module_id: "ai_analysis"
+    name: "AI/LLM Analysis & Automation Module"
+    version: "1.0.0"
+    description: "Intelligent orchestration, classification, and report generation"
+    
+    responsibilities:
+      - "Classify communications as Benign/Suspicious/Fraud"
+      - "Generate explainability reports for all classifications"
+      - "Create natural language incident summaries"
+      - "Suggest OSINT tasks based on incomplete knowledge cards"
+      - "Continuous learning from analyst feedback"
+    
+    inputs:
+      - "Attribution reports"
+      - "OSINT knowledge cards"
+      - "Communication analysis"
+      - "Historical case data"
+    
+    outputs:
+      risk_classification:
+        values: ["benign", "suspicious", "fraud"]
+        confidence: "number (0-1)"
+      
+      explainability_report:
+        schema:
+          classification: "string"
+          confidence: "number"
+          explanation:
+            top_features:
+              - feature: "string"
+                value: "any"
+                contribution: "number"
+            similar_cases: "string[]"
+            decision_boundary: "string"
+      
+      incident_summary:
+        format: "natural_language"
+        length: "200-300 words"
+        audience: "legal_team"
+      
+      osint_task_suggestions:
+        format: "array<{action, expected_value}>"
+        count: "3-5 suggestions"
+    
+    success_criteria:
+      classification_accuracy: ">95%"
+      explainability: "Top 3 features for every decision"
+      false_positive_rate: "<2%"
+      summary_generation_time: "<30s"
+      suggestion_acceptance: ">60%"
+    
+    models:
+      classification:
+        primary:
+          name: "XGBoost Fraud Classifier"
+          features: "50+ dimensions"
+          training_data: "10k+ labeled cases"
+          retraining: "Weekly on new data"
+          explainability: "SHAP values"
+        
+        baseline:
+          name: "Logistic Regression"
+          use_case: "Interpretable fallback"
+        
+        features:
+          device_network:
+            - "vpn_detected"
+            - "tor_usage"
+            - "device_fingerprint_novelty"
+            - "ip_reputation_score"
+            - "asn_type"
+          
+          communication:
+            - "email_auth_pass"
+            - "domain_age"
+            - "url_count"
+            - "attachment_present"
+          
+          content:
+            - "urgency_language_score"
+            - "credential_request_detected"
+            - "brand_mention"
+            - "grammar_quality"
+          
+          osint:
+            - "social_media_authenticity"
+            - "data_breach_exposure"
+            - "phone_number_type"
+            - "domain_whois_privacy"
+          
+          behavioral:
+            - "session_count"
+            - "time_of_day_pattern"
+            - "user_interaction_speed"
+          
+          historical:
+            - "match_known_fraud_patterns"
+            - "similarity_to_past_cases"
+      
+      llm_integration:
+        providers:
+          primary:
+            name: "OpenAI GPT-4 (Azure)"
+            use_cases:
+              - "Legal reports"
+              - "Complex incident summaries"
+            justification: "Highest quality, enterprise SLA"
+          
+          secondary:
+            name: "Anthropic Claude 3"
+            use_cases:
+              - "Long context analysis (200k tokens)"
+              - "Nuanced reasoning"
+            justification: "Strong safety features"
+          
+          self_hosted:
+            name: "Llama 3 (70B)"
+            use_cases:
+              - "Privacy-sensitive analysis"
+              - "High-volume OSINT suggestions"
+            justification: "No data leaves infrastructure"
+        
+        prompt_templates:
+          incident_summary: |
+            You are a cybersecurity analyst writing an incident report. Based on 
+            the following structured data, generate a concise, professional 
+            incident summary (200-300 words) that a legal team can understand:
+
+            CASE ID: {case_id}
+            DETECTION TIME: {timestamp}
+            ATTACKER PROFILE:
+            - Device ID: {pdid}
+            - Location: {location}
+            - VPN/Proxy: {vpn_detected}
+            - Email: {email}
+            - Phone: {phone}
+
+            INCIDENT DETAILS:
+            - Type: {incident_type}
+            - Target: {victim_email}
+            - Malicious Content: {threat_description}
+            - Domain: {domain} (Age: {domain_age} days)
+
+            OSINT FINDINGS:
+            {osint_summary}
+
+            SIMILAR CASES: {linked_cases}
+            RISK SCORE: {risk_score}/100
+
+            Write a clear narrative explaining what happened, who is responsible, 
+            what evidence was collected, and recommended actions.
+          
+          osint_suggestions: |
+            Given the following OSINT findings, suggest 3-5 investigative actions 
+            that would provide additional context. For each suggestion, explain 
+            the expected value:
+
+            CURRENT FINDINGS:
+            {knowledge_card_summary}
+
+            MISSING INFORMATION:
+            - No social media profiles found
+            - Domain registered with privacy protection
+            - Phone number is VoIP type
+
+            Provide suggestions in this format:
+            1. [Action] - [Expected Value]
+        
+        safety:
+          input_sanitization: "Escape all user text, limit 4000 tokens"
+          output_validation: "Cross-check facts against source data"
+          rate_limiting: "100 calls/hour per analyst"
+          caching: "Common queries cached"
+          model_selection:
+            high_sensitivity: "GPT-4 + human review"
+            medium_sensitivity: "Claude 3 + spot checks"
+            low_sensitivity: "Llama 3 self-hosted"
+          audit_trail: "All prompts and responses logged"
+    
+    configuration:
+      training:
+        initial_dataset: "1000+ labeled cases (500 fraud, 500 benign)"
+        production_dataset: "10k+ cases with continuous retraining"
+        retraining_trigger: "Weekly OR 5% accuracy drop"
+        validation_split: "80/20 train/test"
+      
+      explainability:
+        method: "SHAP (SHapley Additive exPlanations)"
+        top_features: 3
+        confidence_visualization: "Probability distribution"
+      
+      monitoring:
+        metrics:
+          - "Prediction distribution"
+          - "Feature drift"
+          - "Analyst override rate"
+          - "False positive/negative rates"
+        alerts:
+          - "Accuracy drop >5%"
+          - "Feature drift >0.1"
+          - "Override rate >10%"
+      
+      continuous_learning:
+        feedback_loop: "Analyst decisions used for retraining"
+        active_learning: "Flag low-confidence cases for manual review"
+        model_versioning: "MLflow for experiment tracking"
+
+# ============================================================================
+# WORKFLOWS
+# ============================================================================
+
+workflows:
+  - workflow_id: "fraud_detection_pipeline"
+    name: "End-to-End Fraud Detection Pipeline"
+    description: "Real-time pipeline from communication ingestion to analyst alert"
+    
+    trigger:
+      type: "webhook"
+      sources: ["email_forward", "sms_gateway", "web_form", "social_dm"]
+    
+    steps:
+      - step: "ingest"
+        module: "communication_guard"
+        action: "intercept_and_parse"
+        output: "parsed_communication"
+      
+      - step: "parallel_analysis"
+        type: "parallel"
+        branches:
+          - branch: "attribution"
+            module: "device_attribution"
+            action: "fingerprint_and_geolocate"
+            input: "parsed_communication.metadata"
+            output: "attribution_report"
+          
+          - branch: "osint"
+            module: "osint_intelligence"
+            action: "enrich_identifiers"
+            input: "parsed_communication.identifiers"
+            output: "knowledge_card"
+          
+          - branch: "content_scan"
+            module: "communication_guard"
+            action: "scan_urls_and_attachments"
+            input: "parsed_communication.content"
+            output: "threat_report"
+      
+      - step: "aggregate"
+        action: "merge_analysis_results"
+        inputs:
+          - "attribution_report"
+          - "knowledge_card"
+          - "threat_report"
+        output: "aggregated_analysis"
+      
+      - step: "ai_classification"
+        module: "ai_analysis"
+        action: "classify_and_explain"
+        input: "aggregated_analysis"
+        output: "risk_classification"
+      
+      - step: "evidence_storage"
+        module: "evidence_vault"
+        action: "store_with_chain_of_custody"
+        inputs:
+          - "parsed_communication"
+          - "aggregated_analysis"
+          - "risk_classification"
+        output: "evidence_id"
+      
+      - step: "triage_routing"
+        type: "conditional"
+        condition: "risk_classification.verdict"
+        branches:
+          safe:
+            action: "deliver_to_user"
+            notification: false
+          
+          suspicious:
+            action: "generate_safe_preview"
+            notification: "notify_user_with_preview_link"
+          
+          malicious:
+            action: "quarantine_and_alert"
+            notification: "notify_analyst_immediate"
+    
+    performance_targets:
+      end_to_end_latency: "<5s"
+      parallel_execution: true
+      error_handling: "graceful_degradation"
+      retry_policy: "exponential_backoff"
+
+  - workflow_id: "osint_deep_dive"
+    name: "OSINT Deep Dive Investigation"
+    description: "Manual or automated deep investigation triggered by analysts"
+    
+    trigger:
+      type: "manual_or_automated"
+      conditions:
+        - "Analyst clicks 'Deep Scan' on Knowledge Card"
+        - "AI suggests deep dive (confidence <0.7)"
+    
+    steps:
+      - step: "spiderfoot_scan"
+        tool: "SpiderFoot HX"
+        action: "automated_scan"
+        input: "primary_identifier"
+        modules: "all_200_plus_sources"
+        timeout: "10 minutes"
+        output: "spiderfoot_results"
+      
+      - step: "social_media_enumeration"
+        tools:
+          - "Sherlock (username search)"
+          - "Social-Analyzer (profile analysis)"
+        parallel: true
+        output: "social_profiles"
+      
+      - step: "breach_database_search"
+        tools:
+          - "Have I Been Pwned"
+          - "DeHashed"
+        input: "email_addresses"
+        output: "breach_exposure"
+      
+      - step: "domain_history"
+        tools:
+          - "WhoisXML Historical WHOIS"
+          - "URLScan.io"
+          - "Certificate Transparency Logs"
+        input: "domains_owned"
+        output: "domain_intelligence"
+      
+      - step: "graph_construction"
+        action: "build_identity_graph"
+        inputs:
+          - "spiderfoot_results"
+          - "social_profiles"
+          - "breach_exposure"
+          - "domain_intelligence"
+        database: "Neo4j"
+        output: "identity_graph"
+      
+      - step: "knowledge_card_update"
+        module: "osint_intelligence"
+        action: "update_with_deep_findings"
+        inputs:
+          - "existing_knowledge_card"
+          - "identity_graph"
+        output: "enriched_knowledge_card"
+      
+      - step: "analyst_notification"
+        action: "send_update_to_dashboard"
+        content: "Deep dive complete - {new_findings_count} new findings"
+    
+    performance_targets:
+      completion_time: "<15 minutes"
+      new_findings_rate: ">50%"
+
+  - workflow_id: "legal_export"
+    name: "Legal Evidence Package Export"
+    description: "Generate comprehensive legal report for litigation"
+    
+    trigger:
+      type: "manual"
+      authorized_roles: ["Legal Team", "Senior Investigator"]
+    
+    steps:
+      - step: "case_validation"
+        action: "verify_case_completeness"
+        checks:
+          - "All evidence has chain of custody"
+          - "No integrity violations"
+          - "All required fields populated"
+        output: "validation_result"
+      
+      - step: "gather_artifacts"
+        module: "evidence_vault"
+        action: "collect_case_evidence"
+        input: "case_id"
+        output: "evidence_collection"
+      
+      - step: "generate_timeline"
+        action: "chronological_sort_and_format"
+        input: "evidence_collection"
+        output: "timeline_data"
+      
+      - step: "llm_summary_generation"
+        module: "ai_analysis"
+        model: "GPT-4"
+        action: "generate_incident_summary"
+        input: "evidence_collection"
+        output: "executive_summary"
+      
+      - step: "pdf_report_generation"
+        action: "render_legal_report_pdf"
+        template: "legal_report_template"
+        inputs:
+          - "case_metadata"
+          - "executive_summary"
+          - "knowledge_card"
+          - "timeline_data"
+          - "chain_of_custody_logs"
+        watermark: "CONFIDENTIAL - LEGAL USE ONLY"
+        output: "report_pdf"
+      
+      - step: "csv_export"
+        action: "export_timeline_csv"
+        input: "timeline_data"
+        output: "timeline_csv"
+      
+      - step: "evidence_package_assembly"
+        action: "create_zip_with_manifest"
+        contents:
+          - "report_pdf"
+          - "timeline_csv"
+          - "raw_evidence_files"
+          - "manifest.json"
+        output: "evidence_package_zip"
+      
+      - step: "digital_signature"
+        action: "gpg_sign_package"
+        key: "legal_team_signing_key"
+        input: "evidence_package_zip"
+        output: "signed_package"
+      
+      - step: "storage_and_delivery"
+        actions:
+          - "Store in R2 with legal hold"
+          - "Generate download link (expires 7 days)"
+          - "Send secure link to legal team"
+          - "Log export in audit trail"
+      
+      - step: "legal_hold_enforcement"
+        action: "apply_retention_policy"
+        policy: "indefinite"
+        reason: "active_litigation"
+    
+    compliance:
+      standards: ["NIST SP 800-86", "EDRM", "Federal Rules of Evidence"]
+      certification: "Digital signature by legal counsel"
+
+  - workflow_id: "xmap_sync_and_history"
+    name: "XMAP Real-Time Sync and Version History"
+    description: "Keep repository state synchronized with XMAP in KV + D1 history"
+    
+    trigger:
+      type: "event_driven"
+      sources:
+        - "GitHub webhook (push/PR)"
+        - "Manual MCP tool invocation"
+        - "Scheduled polling (every 5 minutes)"
+    
+    steps:
+      - step: "fetch_repo_state"
+        action: "git_clone_or_pull"
+        input: "repo_url"
+        output: "repo_snapshot"
+      
+      - step: "generate_xmap"
+        mcp_tool: "xmap_generate_from_repo"
+        input: "repo_snapshot"
+        output: "xmap_v4"
+      
+      - step: "validate_xmap"
+        mcp_tool: "xmap_validate"
+        input: "xmap_v4"
+        guardian_gates: true
+        output: "validation_result"
+      
+      - step: "store_in_kv"
+        action: "update_config_store"
+        key: "pow3r.v4.config.json"
+        value: "xmap_v4"
+        namespace: "CONFIG_STORE"
+      
+      - step: "store_version_history"
+        database: "D1"
+        table: "xmap_history"
+        action: "insert_version"
+        data:
+          version_id: "uuid"
+          repo_name: "string"
+          xmap_data: "xmap_v4"
+          timestamp_utc: "now()"
+          change_type: "update|merge|sync"
+          changed_by: "github_webhook|mcp_tool"
+      
+      - step: "diff_calculation"
+        action: "compare_with_previous_version"
+        output: "diff_report"
+      
+      - step: "notification"
+        action: "notify_relevant_parties"
+        channels: ["Slack", "Dashboard"]
+        content: "XMAP updated: {repo_name} - {change_summary}"
+    
+    features:
+      real_time_sync: true
+      version_control: "Full history in D1"
+      time_series_replay: "Query any point in time"
+      diff_visualization: "Visual comparison between versions"
+
+# ============================================================================
+# INTEGRATIONS
+# ============================================================================
+
+integrations:
+  mcp_servers:
+    custom_servers:
+      - name: "replicate"
+        url: "https://i.ytimg.com/vi/WvUf4Yc5mRs/sddefault.jpg"
+        description: "Video/image generation"
+        tools:
+          - "generate_image"
+          - "generate_video"
+          - "run_model"
+      
+      - name: "gemini"
+        url: "https://config.superbots.link/mcp/gemini"
+        description: "Text, vision, embeddings"
+        tools:
+          - "generate_content"
+          - "embed_content"
+          - "analyze_image"
+      
+      - name: "claude"
+        url: "https://config.superbots.link/mcp/claude"
+        description: "Chat completions"
+        tools:
+          - "create_message"
+          - "stream_message"
+      
+      - name: "github"
+        url: "https://config.superbots.link/mcp/github"
+        description: "Repository operations"
+        tools:
+          - "search_repositories"
+          - "get_repository"
+          - "get_pull_request"
+          - "list_issues"
+          - "create_issue"
+          - "get_file_contents"
+      
+      - name: "obsidian"
+        url: "https://config.superbots.link/mcp/obsidian"
+        description: "Vault operations"
+        tools:
+          - "create_note"
+          - "read_note"
+          - "update_note"
+          - "search_notes"
+      
+      - name: "mermaid"
+        url: "https://config.superbots.link/mcp/mermaid"
+        description: "Diagram generation"
+        tools:
+          - "generate_diagram"
+          - "validate_syntax"
+      
+      - name: "xmap"
+        url: "https://config.superbots.link/mcp/xmap"
+        description: "XMAP operations (generate, validate, merge, sync, update status)"
+        tools:
+          - "xmap_generate_from_repo"
+          - "xmap_update_dev_status"
+          - "xmap_validate"
+          - "xmap_merge_repos"
+          - "xmap_sync_from_repo"
+        webhooks:
+          github: "https://config.superbots.link/xmap/webhook/github"
+        endpoints:
+          sync: "https://config.superbots.link/xmap/sync"
+          history: "https://config.superbots.link/xmap/history"
+    
+    cloudflare_managed_servers:
+      - name: "documentation"
+        url: "https://docs.mcp.cloudflare.com/mcp"
+        description: "Cloudflare documentation search"
+      
+      - name: "workers_bindings"
+        url: "https://bindings.mcp.cloudflare.com/mcp"
+        description: "Manage KV, D1, R2, AI bindings"
+      
+      - name: "observability"
+        url: "https://observability.mcp.cloudflare.com/mcp"
+        description: "Logs and analytics"
+      
+      - name: "radar"
+        url: "https://radar.mcp.cloudflare.com/mcp"
+        description: "Global internet insights, URL scans"
+      
+      - name: "browser_rendering"
+        url: "https://i.ytimg.com/vi/n1cKlKM3jYI/maxresdefault.jpg"
+        description: "Fetch pages, screenshots, markdown conversion"
+      
+      - name: "ai_gateway"
+        url: "https://ai-gateway.mcp.cloudflare.com/mcp"
+        description: "AI request logs, prompt analysis"
+      
+      - name: "ai_search"
+        url: "https://autorag.mcp.cloudflare.com/mcp"
+        description: "Search vectorized documents"
+      
+      - name: "audit_logs"
+        url: "https://auditlogs.mcp.cloudflare.com/mcp"
+        description: "Security audit reports"
+      
+      - name: "dns_analytics"
+        url: "https://dns-analytics.mcp.cloudflare.com/mcp"
+        description: "DNS performance optimization"
+      
+      - name: "casb"
+        url: "https://casb.mcp.cloudflare.com/mcp"
+        description: "SaaS security misconfigurations"
+    
+    authentication: "OAuth for Cloudflare servers, POW3R_PASS for custom servers"
+    transport: "streamable-http (recommended) / SSE (deprecated)"
+  
+  external_apis:
+    osint:
+      - name: "SpiderFoot HX API"
+        endpoint: "https://spiderfoot-instance/api"
+        authentication: "API key"
+      
+      - name: "Hunter.io"
+        endpoint: "https://api.hunter.io/v2"
+        authentication: "API key"
+        rate_limit: "25 requests/month (free)"
+      
+      - name: "Have I Been Pwned"
+        endpoint: "https://haveibeenpwned.com/api/v3"
+        authentication: "API key"
+      
+      - name: "VirusTotal"
+        endpoint: "https://www.virustotal.com/api/v3"
+        authentication: "API key"
+        rate_limit: "500 requests/day (free)"
+      
+      - name: "URLScan.io"
+        endpoint: "https://urlscan.io/api/v1"
+        authentication: "API key"
+      
+      - name: "PhishTank"
+        endpoint: "https://checkurl.phishtank.com/checkurl/"
+        authentication: "None (public)"
+    
+    llm_providers:
+      - name: "Azure OpenAI"
+        endpoint: "https://{resource}.openai.azure.com"
+        authentication: "API key via POW3R_PASS"
+        models: ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo"]
+      
+      - name: "Anthropic"
+        endpoint: "https://api.anthropic.com"
+        authentication: "API key via POW3R_PASS"
+        models: ["claude-3-opus", "claude-3-sonnet"]
+      
+      - name: "Self-hosted Llama"
+        endpoint: "http://localhost:8000/v1"
+        authentication: "None (internal)"
+        models: ["llama-3-70b"]
+    
+    threat_intelligence:
+      - name: "MISP"
+        endpoint: "https://misp-instance/api"
+        authentication: "API key"
+        format: "STIX 2.1"
+      
+      - name: "OpenCTI"
+        endpoint: "https://opencti-instance/graphql"
+        authentication: "Bearer token"
+        format: "STIX 2.1"
+
+  github_integration:
+    guardian_workflow:
+      file: ".github/workflows/guardian.yml"
+      gates:
+        - gate: "1_schema_validation"
+          tool: "AJV"
+          files: ["configs/pow3r.v3.config.json", "configs/pow3r.v3.status.json"]
+        
+        - gate: "2_mock_code_scan"
+          patterns: ["TODO:", "FIXME:", "placeholder", "fakeData", "mockData"]
+          scope: "./src/"
+        
+        - gate: "3_regression_tests"
+          command: "npm run test:e2e:all"
+          browsers: ["chromium", "firefox", "webkit", "ipad_mini", "ipad_pro"]
+        
+        - gate: "4_config_integrity"
+          files: ["configs/pow3r.v3.config.json", "configs/pow3r.v3.schema.json", "laws/pow3r.v3.law.md"]
+        
+        - gate: "5_constitutional_compliance"
+          file: "laws/pow3r.v3.law.md"
+          validation: "File exists and not empty"
+      
+      branch_protection:
+        require_status_checks: true
+        require_up_to_date: true
+        require_reviews: 1
+        dismiss_stale_reviews: true
+        no_force_pushes: true
+        no_deletions: true
+    
+    xmap_webhooks:
+      url: "https://config.superbots.link/xmap/webhook/github"
+      events: ["push", "pull_request"]
+      action: "Trigger XMAP sync workflow"
+
+# ============================================================================
+# DEPLOYMENT INSTRUCTIONS
+# ============================================================================
+
+deployment:
+  infrastructure_setup:
+    cloudflare_account:
+      - step: "Create Cloudflare account (if not exists)"
+      - step: "Enable Workers, D1, R2, KV, Vectorize, AI Gateway"
+      - step: "Configure OAuth for MCP servers"
+    
+    kv_namespaces:
+      - namespace: "CREDENTIAL_STORE"
+        command: "wrangler kv:namespace create CREDENTIAL_STORE"
+        purpose: "POW3R_PASS credentials"
+      
+      - namespace: "CONFIG_STORE"
+        command: "wrangler kv:namespace create CONFIG_STORE"
+        purpose: "XMAP and config storage"
+      
+      - namespace: "CACHE_STORE"
+        command: "wrangler kv:namespace create CACHE_STORE"
+        purpose: "OSINT and fingerprint cache"
+    
+    d1_databases:
+      - database: "fcg_evidence"
+        command: "wrangler d1 create fcg_evidence"
+        tables:
+          - "evidence_artifacts"
+          - "custody_chain"
+          - "access_log"
+          - "device_fingerprints"
+          - "attacker_profiles"
+          - "cases"
+          - "xmap_history"
+        migrations: "Use Drizzle ORM migration files"
+      
+      - database: "fcg_analytics"
+        command: "wrangler d1 create fcg_analytics"
+        purpose: "Time-series data, metrics, alerts"
+    
+    r2_buckets:
+      - bucket: "fcg-evidence-vault"
+        command: "wrangler r2 bucket create fcg-evidence-vault"
+        encryption: "AES-256"
+        lifecycle: "Transition to Glacier after 90 days (non-case data)"
+      
+      - bucket: "fcg-osint-artifacts"
+        command: "wrangler r2 bucket create fcg-osint-artifacts"
+        purpose: "OSINT screenshots, raw data"
+    
+    vectorize_indexes:
+      - index: "fcg-knowledge-graph"
+        dimensions: 1536
+        metric: "cosine"
+        purpose: "Attacker profile embeddings"
+      
+      - index: "fcg-communication-content"
+        dimensions: 768
+        metric: "euclidean"
+        purpose: "Communication content similarity"
+  
+  backend_deployment:
+    workers:
+      - worker: "fcg-api"
+        entry: "src/index.ts"
+        routes:
+          - "https://fcg-api.yourdomain.com/*"
+        bindings:
+          - "CREDENTIAL_STORE (KV)"
+          - "CONFIG_STORE (KV)"
+          - "fcg_evidence (D1)"
+          - "fcg-evidence-vault (R2)"
+        deployment: "wrangler deploy --env production"
+      
+      - worker: "fcg-mcp-servers"
+        entry: "src/mcp/index.ts"
+        routes:
+          - "https://config.superbots.link/mcp/*"
+        description: "Custom MCP servers"
+      
+      - worker: "fcg-osint-worker"
+        entry: "src/osint/worker.ts"
+        queues: ["osint-enrichment-queue"]
+        description: "Background OSINT processing"
+    
+    secrets:
+      - secret: "OPENAI_API_KEY"
+        command: "wrangler secret put OPENAI_API_KEY"
+      
+      - secret: "ANTHROPIC_API_KEY"
+        command: "wrangler secret put ANTHROPIC_API_KEY"
+      
+      - secret: "VIRUSTOTAL_API_KEY"
+        command: "wrangler secret put VIRUSTOTAL_API_KEY"
+      
+      - secret: "SPIDERFOOT_API_KEY"
+        command: "wrangler secret put SPIDERFOOT_API_KEY"
+      
+      - secret: "LEGAL_SIGNING_KEY"
+        command: "wrangler secret put LEGAL_SIGNING_KEY"
+        purpose: "GPG key for signing evidence packages"
+  
+  frontend_deployment:
+    build:
+      framework: "Vite"
+      command: "npm run build"
+      output: "dist/"
+    
+    deployment:
+      platform: "CloudFlare Pages"
+      command: "wrangler pages deploy dist/ --project-name fcg-dashboard"
+      routes:
+        - "https://fcg-dashboard.yourdomain.com"
+      
+      environment_variables:
+        - "VITE_API_URL=https://fcg-api.yourdomain.com"
+        - "VITE_MCP_BASE_URL=https://config.superbots.link/mcp"
+        - "VITE_POWRPASS_URL=https://config.superbots.link/pass"
+    
+    features:
+      - "Analyst Dashboard (main view)"
+      - "Legal Dashboard (evidence export)"
+      - "OSINT Workspace (knowledge cards, graphs)"
+      - "Communication Triage (safe preview)"
+      - "Case Management"
+      - "Settings & Configuration"
+  
+  testing:
+    e2e_tests:
+      framework: "Playwright"
+      browsers: ["chromium", "firefox", "webkit"]
+      command: "npm run test:e2e:all"
+      required: "All tests pass before deployment"
+    
+    integration_tests:
+      - "API endpoints (REST + MCP)"
+      - "Database operations (D1)"
+      - "Evidence chain of custody"
+      - "OSINT enrichment pipeline"
+      - "AI classification accuracy"
+    
+    security_tests:
+      - "Penetration testing"
+      - "OWASP Top 10 compliance"
+      - "Data encryption verification"
+      - "Access control validation"
+      - "Chain of custody integrity"
+  
+  monitoring:
+    observability:
+      - "OpenTelemetry traces to CloudFlare Analytics"
+      - "Custom dashboards in CloudFlare Observability"
+      - "Error tracking (Sentry integration)"
+      - "Performance monitoring (Web Vitals)"
+    
+    alerts:
+      - "Evidence integrity violation (immediate)"
+      - "High-risk fraud detected (immediate)"
+      - "OSINT enrichment failure (5 minutes)"
+      - "API rate limit exceeded (15 minutes)"
+      - "Model accuracy drop >5% (daily)"
+    
+    logging:
+      destination: "CloudFlare Logpush"
+      format: "JSON structured logs"
+      retention: "90 days (analytics), indefinite (evidence)"
+
+  legal_compliance:
+    gdpr:
+      - "Data processing agreements with all vendors"
+      - "Privacy policy updated with FCG disclosure"
+      - "User consent management (where required)"
+      - "Data portability endpoints"
+      - "Right to erasure (except legal hold)"
+    
+    ccpa:
+      - "California resident notification"
+      - "Opt-out mechanism"
+      - "Data sale prohibition statement"
+    
+    ecpa:
+      - "Legal authorization for covert monitoring documented"
+      - "Minimize collection to relevant data only"
+      - "Chain of custody for admissibility"
+    
+    nist_sp_800_86:
+      - "All evidence handling follows guidelines"
+      - "Integrity verification documented"
+      - "Tool validation and testing"
+
+# ============================================================================
+# KNOWLEDGE GRAPH STRUCTURE
+# ============================================================================
+
+knowledge_graph_structure:
+  description: |
+    The FCG knowledge graph represents relationships between attackers, 
+    communications, evidence, and cases using a property graph model.
+  
+  database: "Neo4j (self-hosted) or CloudFlare Vectorize + D1 (relationships)"
+  
+  node_types:
+    - node: "Attacker"
+      properties:
+        - "pdid (unique identifier)"
+        - "primary_email"
+        - "primary_phone"
+        - "first_seen"
+        - "last_seen"
+        - "risk_score"
+        - "confidence"
+      
+    - node: "Device"
+      properties:
+        - "fingerprint_hash"
+        - "os"
+        - "browser"
+        - "device_type"
+        - "first_seen"
+        - "last_seen"
+      
+    - node: "IP Address"
+      properties:
+        - "ip"
+        - "asn"
+        - "isp"
+        - "country"
+        - "city"
+        - "vpn_detected"
+      
+    - node: "Email"
+      properties:
+        - "address"
+        - "domain"
+        - "breach_exposure"
+        - "reputation_score"
+      
+    - node: "Phone"
+      properties:
+        - "number"
+        - "carrier"
+        - "type (mobile, voip, landline)"
+        - "country"
+      
+    - node: "Domain"
+      properties:
+        - "name"
+        - "registrar"
+        - "registration_date"
+        - "whois_privacy"
+        - "reputation_score"
+      
+    - node: "Social Media Account"
+      properties:
+        - "platform"
+        - "username"
+        - "profile_url"
+        - "followers"
+        - "authenticity_score"
+      
+    - node: "Communication"
+      properties:
+        - "id"
+        - "type (email, sms, web_form)"
+        - "timestamp"
+        - "subject"
+        - "content_hash"
+        - "verdict"
+      
+    - node: "Evidence"
+      properties:
+        - "evidence_id"
+        - "type"
+        - "timestamp"
+        - "hash"
+        - "storage_location"
+      
+    - node: "Case"
+      properties:
+        - "case_id"
+        - "status"
+        - "created_at"
+        - "assigned_to"
+        - "risk_level"
+  
+  relationship_types:
+    - relationship: "USES"
+      from: "Attacker"
+      to: "Device"
+      properties: ["confidence", "first_seen", "last_seen"]
+    
+    - relationship: "ORIGINATES_FROM"
+      from: "Communication"
+      to: "IP Address"
+      properties: ["timestamp"]
+    
+    - relationship: "OWNS"
+      from: "Attacker"
+      to: "Email | Phone | Domain | Social Media Account"
+      properties: ["confidence", "source"]
+    
+    - relationship: "SENT"
+      from: "Attacker"
+      to: "Communication"
+      properties: ["timestamp", "confidence"]
+    
+    - relationship: "LINKED_TO"
+      from: "Attacker"
+      to: "Attacker"
+      properties: ["relationship_type", "confidence", "evidence"]
+      description: "Same person, family member, associate, etc."
+    
+    - relationship: "SIMILAR_TO"
+      from: "Communication"
+      to: "Communication"
+      properties: ["similarity_score", "shared_features"]
+    
+    - relationship: "PART_OF"
+      from: "Evidence"
+      to: "Case"
+      properties: ["exhibit_number"]
+    
+    - relationship: "RELATED_TO"
+      from: "Case"
+      to: "Case"
+      properties: ["relationship_type", "shared_evidence_count"]
+  
+  queries:
+    - query: "Find all communications from a specific attacker"
+      cypher: |
+        MATCH (a:Attacker {pdid: $pdid})-[:SENT]->(c:Communication)
+        RETURN c
+        ORDER BY c.timestamp DESC
+    
+    - query: "Find all devices used by an attacker"
+      cypher: |
+        MATCH (a:Attacker {pdid: $pdid})-[:USES]->(d:Device)
+        RETURN d
+    
+    - query: "Find attackers using the same email domain"
+      cypher: |
+        MATCH (a1:Attacker)-[:OWNS]->(e1:Email)
+        WHERE e1.address CONTAINS $domain
+        MATCH (a2:Attacker)-[:OWNS]->(e2:Email)
+        WHERE e2.address CONTAINS $domain AND a1 <> a2
+        RETURN a1, a2, e1, e2
+    
+    - query: "Find similar fraud patterns"
+      cypher: |
+        MATCH (c1:Communication {verdict: 'malicious'})
+        MATCH (c2:Communication {verdict: 'malicious'})
+        WHERE c1.id <> c2.id
+        AND c1.type = c2.type
+        RETURN c1, c2, 
+               apoc.text.sorensenDiceSimilarity(c1.subject, c2.subject) AS similarity
+        ORDER BY similarity DESC
+        LIMIT 10
+    
+    - query: "Build evidence chain for case"
+      cypher: |
+        MATCH (case:Case {case_id: $case_id})<-[:PART_OF]-(e:Evidence)
+        MATCH (e)-[:RELATES_TO]->(related)
+        RETURN e, related
+        ORDER BY e.timestamp
+  
+  rag_integration:
+    vectorize_embeddings:
+      - "Attacker profiles (identity graph + risk indicators)"
+      - "Communication content (subject + body)"
+      - "OSINT findings (knowledge card summaries)"
+      - "Case reports (executive summaries)"
+    
+    retrieval:
+      - query: "Natural language query from analyst"
+        process: "Embed query → Vector similarity search → Retrieve top K"
+        augmentation: "Inject retrieved context into LLM prompt"
+        use_cases:
+          - "Find similar attackers"
+          - "Search past cases"
+          - "Discover fraud patterns"
+          - "Cross-reference evidence"
+
+# ============================================================================
+# CONFIGURATION SCHEMA EXAMPLE
+# ============================================================================
+
+config_schema_example:
+  description: |
+    All components in the FCG system are driven by configuration files
+    following the pow3r.v4.config.json schema. This enables:
+    - Zero-downtime updates (swap config, reload)
+    - A/B testing (multiple configs, route by feature flag)
+    - AI agents can modify config without touching code
+    - Version control and rollback of behavior changes
+  
+  schema_version: "4.0.0"
+  
+  example_component:
+    component_id: "fraud_classifier_v2"
+    component_type: "ai_model"
+    version: "2.3.0"
+    
+    config:
+      model:
+        type: "xgboost"
+        path: "models/fraud_classifier_v2_3.json"
+        features:
+          - "vpn_detected"
+          - "domain_age"
+          - "email_auth_pass"
+          - "urgency_score"
+        thresholds:
+          fraud: 0.85
+          suspicious: 0.5
+        explainability: "shap"
+      
+      inputs:
+        attribution: "device_attribution.output"
+        osint: "osint_intelligence.output"
+        communication: "communication_guard.output"
+      
+      outputs:
+        classification: "evidence_vault.input"
+        alerts: "analyst_dashboard.alerts"
+      
+      observability:
+        emit_traces: true
+        log_predictions: true
+        log_features: true
+        log_explanations: true
+      
+      themes:
+        dark:
+          chart_colors: ["#00ff00", "#00aaff", "#ff00ff"]
+        light:
+          chart_colors: ["#00aa00", "#0088cc", "#cc00cc"]
+        glass:
+          chart_colors: ["#00ff00", "#00aaff", "#ff00ff"]
+          backdrop_filter: "blur(10px)"
+      
+      rendering:
+        2d: "Confusion matrix heatmap"
+        3d: "Feature importance 3D scatter"
+        react_flow: "Model pipeline DAG"
+        data_driven: true
+        theme_aware: true
+  
+  validation:
+    guardian_gates:
+      - "Schema validation against pow3r.v4.schema.json"
+      - "No mock data in config"
+      - "All referenced models/files exist"
+      - "Config passes constitutional law checks"
+      - "Automated tests validate config behavior"
+
+# ============================================================================
+# APPENDIX: QUICK START GUIDE
+# ============================================================================
+
+quick_start_guide:
+  prototype_1_hour:
+    description: "Minimal viable FCG in 60 minutes"
+    
+    steps:
+      - step: "1. Setup CloudFlare Account (5 min)"
+        actions:
+          - "Create account at cloudflare.com"
+          - "Install wrangler CLI: npm install -g wrangler"
+          - "Login: wrangler login"
+      
+      - step: "2. Create KV Namespace (5 min)"
+        actions:
+          - "wrangler kv:namespace create CREDENTIAL_STORE"
+          - "wrangler kv:namespace create CONFIG_STORE"
+          - "Update wrangler.toml with namespace IDs"
+      
+      - step: "3. Deploy POW3R_PASS API (10 min)"
+        actions:
+          - "Clone pow3r.config repo"
+          - "npm install"
+          - "Populate credentials: ./scripts/populate-credentials.sh"
+          - "Deploy: npm run deploy:production"
+          - "Test: curl https://config.superbots.link/pass/health"
+      
+      - step: "4. Setup D1 Database (10 min)"
+        actions:
+          - "wrangler d1 create fcg_evidence"
+          - "Run migrations: npm run db:migrate"
+          - "Verify: wrangler d1 execute fcg_evidence --command 'SELECT * FROM evidence_artifacts LIMIT 1'"
+      
+      - step: "5. Deploy Backend Worker (15 min)"
+        actions:
+          - "Create src/index.ts with basic API routes"
+          - "Implement attribution endpoint (FingerprintJS + MaxMind)"
+          - "Implement OSINT endpoint (Hunter.io + HIBP)"
+          - "Implement communication scan endpoint (VirusTotal)"
+          - "Deploy: wrangler deploy"
+      
+      - step: "6. Create Frontend Dashboard (15 min)"
+        actions:
+          - "npx create-vite fcg-dashboard --template react-ts"
+          - "Install dependencies: npm install react-flow zustand @radix-ui/react-dialog"
+          - "Create basic analyst dashboard layout"
+          - "Connect to backend API"
+          - "Deploy: wrangler pages deploy dist/"
+      
+      - step: "7. Test End-to-End (5 min)"
+        actions:
+          - "Send test email to ingest endpoint"
+          - "Verify attribution, OSINT, scan results"
+          - "Check evidence vault storage"
+          - "View in analyst dashboard"
+  
+  production_deployment:
+    timeline: "2-4 weeks"
+    
+    week_1:
+      - "Full infrastructure setup (CloudFlare services)"
+      - "POW3R_PASS deployment and credential management"
+      - "D1 schema and migrations"
+      - "R2 bucket setup with encryption"
+      - "Guardian workflow integration"
+    
+    week_2:
+      - "All 5 modules implemented and tested"
+      - "AI classification model trained (initial dataset)"
+      - "Evidence vault with full chain of custody"
+      - "Integration tests passing"
+    
+    week_3:
+      - "Frontend dashboards (Analyst + Legal)"
+      - "OSINT automation and knowledge cards"
+      - "Knowledge graph setup (Neo4j or Vectorize)"
+      - "Safe preview and user workflows"
+    
+    week_4:
+      - "Security audit and penetration testing"
+      - "Legal compliance review"
+      - "Performance optimization"
+      - "Documentation and training"
+      - "Production deployment"
+  
+  maintenance:
+    daily:
+      - "Monitor alerts (fraud detection, integrity violations)"
+      - "Review analyst dashboard for new cases"
+      - "Verify evidence integrity (automated)"
+    
+    weekly:
+      - "Retrain AI models on new labeled data"
+      - "Review false positive/negative rates"
+      - "Update OSINT tool subscriptions"
+      - "Guardian workflow validation"
+    
+    monthly:
+      - "Security audit and penetration testing"
+      - "Legal compliance review"
+      - "Performance optimization"
+      - "Feature updates and enhancements"
+    
+    quarterly:
+      - "Comprehensive system audit"
+      - "Update documentation"
+      - "Training for new team members"
+      - "Roadmap planning and prioritization"
+
+# ============================================================================
+# END OF CONFIGURATION
+# ============================================================================

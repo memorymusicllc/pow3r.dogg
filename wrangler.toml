@@ -1,0 +1,57 @@
+name = "pow3r-defender"
+main = "src/index.ts"
+compatibility_date = "2024-11-14"
+
+[env.production]
+name = "pow3r-defender-production"
+
+# D1 Database
+[[env.production.d1_databases]]
+binding = "DEFENDER_DB"
+database_name = "defender-db"
+database_id = "YOUR_D1_DATABASE_ID"
+
+# KV Namespaces
+[[env.production.kv_namespaces]]
+binding = "DEFENDER_FORGE"
+id = "YOUR_KV_DEFENDER_FORGE_ID"
+
+[[env.production.kv_namespaces]]
+binding = "CONFIG_STORE"
+id = "YOUR_KV_CONFIG_STORE_ID"
+
+[[env.production.kv_namespaces]]
+binding = "TELEGRAM_STATE"
+id = "YOUR_KV_TELEGRAM_STATE_ID"
+
+# R2 Buckets
+[[env.production.r2_buckets]]
+binding = "TELEGRAM_MEDIA"
+bucket_name = "telegram-media"
+
+[[env.production.r2_buckets]]
+binding = "EVIDENCE_VAULT"
+bucket_name = "evidence-vault"
+
+# Vectorize Index
+[[env.production.vectorize]]
+binding = "DEFENDER_VECTORS"
+index_name = "defender-vectors"
+dimensions = 768
+metric = "cosine"
+
+# Environment Variables
+[env.production.vars]
+ABI_WEBHOOK_URL = "credential:abi_webhook_url"
+
+# Secrets (set via: wrangler secret put SECRET_NAME)
+# SPUR_API_KEY
+# OSINT_INDUSTRIES_API_KEY
+# TRACERS_API_KEY
+# IPQS_API_KEY
+# HUNTER_API_KEY
+# HIBP_API_KEY
+# NUMVERIFY_API_KEY
+# WHOIS_API_KEY
+# ETHEREUM_RPC_URL
+

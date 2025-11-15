@@ -1,0 +1,244 @@
+telegram_bot:
+  metadata:
+    name: "Pow3r Defender Telegram Integration"
+    version: "2025.11.14-production"
+    classification: "Defensive Security - Fraud Investigation"
+  
+  components:
+    guard_dog:
+      name: "Guard Dog Monitor"
+      purpose: "Real-time monitoring and manipulation detection"
+      capabilities:
+        - real_time_message_monitoring
+        - manipulation_detection
+        - auto_warning_generation
+        - threat_scoring
+        - pattern_analysis
+      
+      detection_rules:
+        - rule: "social_engineering_patterns"
+          patterns:
+            - urgency_language
+            - credential_requests
+            - payment_demands
+            - impersonation_attempts
+          threshold: 0.85
+          action: "auto_warn"
+        
+        - rule: "message_frequency_anomaly"
+          patterns:
+            - rapid_message_burst
+            - unusual_time_patterns
+            - message_deletion_spikes
+          threshold: 0.75
+          action: "flag_for_review"
+        
+        - rule: "self_destruct_detection"
+          patterns:
+            - disappearing_messages
+            - screenshot_requests
+            - forward_restrictions
+          threshold: 1.0
+          action: "capture_immediately"
+      
+      monitoring:
+        channels: ["private", "groups", "supergroups"]
+        events:
+          - message_received
+          - message_edited
+          - message_deleted
+          - user_joined
+          - user_left
+          - photo_changed
+          - name_changed
+        real_time: true
+        batch_processing: false
+    
+    impersonation_bot:
+      name: "Victim Impersonation Engine"
+      purpose: "Perfect user cloning and time waste (12-48hr target)"
+      capabilities:
+        - style_mirroring
+        - emotional_mirroring
+        - conversation_continuation
+        - time_waste_optimization
+        - natural_response_generation
+      
+      style_analysis:
+        sources:
+          - historical_messages
+          - typing_patterns
+          - emoji_usage
+          - punctuation_style
+          - response_timing
+        model: "claude-3-7-sonnet"
+        update_frequency: "real_time"
+      
+      time_waste_strategies:
+        - strategy: "extended_questions"
+          description: "Ask clarifying questions to extend conversation"
+          target_duration: "2-4 hours"
+        
+        - strategy: "document_review"
+          description: "Request time to review documents"
+          target_duration: "4-8 hours"
+        
+        - strategy: "consultation_delay"
+          description: "Need to consult with family/advisor"
+          target_duration: "8-12 hours"
+        
+        - strategy: "technical_issues"
+          description: "Simulate technical difficulties"
+          target_duration: "12-24 hours"
+        
+        - strategy: "payment_processing"
+          description: "Extended payment processing delays"
+          target_duration: "24-48 hours"
+      
+      emotional_mirroring:
+        detect_attacker_emotion: true
+        mirror_intensity: 0.8
+        natural_variation: 0.2
+        escalation_prevention: true
+      
+      conversation_goals:
+        primary: "waste_attacker_time"
+        secondary: "collect_evidence"
+        tertiary: "identify_attacker"
+        constraints:
+          - never_reveal_investigation
+          - never_provide_real_credentials
+          - maintain_victim_persona
+          - collect_maximum_intelligence
+    
+    capture_system:
+      name: "Self-Destruct Message Capture"
+      purpose: "100% capture rate of disappearing messages"
+      capabilities:
+        - screenshot_capture
+        - ocr_extraction
+        - metadata_preservation
+        - hash_verification
+      
+      capture_methods:
+        - method: "screenshot_before_display"
+          timing: "immediate_on_receive"
+          format: "png"
+          quality: "lossless"
+        
+        - method: "ocr_extraction"
+          engine: "tesseract_v5"
+          languages: ["eng", "fra", "spa", "deu", "rus", "ara", "chi"]
+          confidence_threshold: 0.85
+        
+        - method: "metadata_capture"
+          fields:
+            - timestamp
+            - sender_id
+            - message_id
+            - chat_id
+            - edit_date
+            - forward_from
+            - reply_to
+      
+      storage:
+        primary: "R2:TELEGRAM_CAPTURES"
+        backup: "D1:TELEGRAM_METADATA"
+        retention: "indefinite"
+        encryption: "AES-256-GCM"
+        access_control: "case_based"
+  
+  deployment:
+    architecture: "hybrid"
+    components:
+      mcp_server:
+        location: "Cloudflare Worker"
+        endpoint: "/mcp/telegram/*"
+        bindings:
+          - D1: DEFENDER_DB
+          - KV: TELEGRAM_STATE
+          - R2: TELEGRAM_MEDIA
+      
+      mtproto_handler:
+        location: "Isolated VM"
+        protocol: "MTProto"
+        security: "sandboxed"
+        communication: "encrypted_tunnel"
+      
+      impersonation_engine:
+        location: "Cloudflare Worker"
+        model: "claude-3-7-sonnet"
+        api: "MCP via config.superbots.link/mcp/claude"
+        caching: "Vectorize:STYLE_EMBEDDINGS"
+  
+  authentication:
+    method: "Pow3r Pass"
+    credentials:
+      telegram_api_id: "credential:telegram_api_id"
+      telegram_api_hash: "credential:telegram_api_hash"
+      telegram_bot_token: "credential:telegram_bot_token"
+    rotation: "automatic"
+    fallback: "manual_override"
+  
+  stealth_features:
+    read_receipt_delays:
+      min_seconds: 5
+      max_seconds: 30
+      distribution: "normal"
+    
+    typing_indicators:
+      enabled: true
+      pattern: "human_like"
+      variation: 0.3
+      min_chars: 3
+      max_chars: 50
+    
+    online_status:
+      guard_dog: "offline"
+      impersonation: "online"
+      switching: "automatic"
+    
+    message_timing:
+      response_delay_min: 10
+      response_delay_max: 300
+      urgency_modifier: 0.5
+      natural_variation: true
+  
+  integration:
+    xmap:
+      node_type: "telegram_investigation"
+      update_on:
+        - new_attacker_detected
+        - manipulation_detected
+        - evidence_captured
+        - impersonation_started
+        - impersonation_ended
+      notify_abi: true
+    
+    abi:
+      webhook_url: "credential:abi_webhook_url"
+      events:
+        - investigation_started
+        - high_risk_attacker
+        - evidence_package_ready
+        - impersonation_active
+      retry_policy:
+        max_retries: 3
+        backoff: "exponential"
+        timeout: 5000
+  
+  monitoring:
+    metrics:
+      - messages_processed_per_hour
+      - manipulation_detection_rate
+      - capture_success_rate
+      - impersonation_duration_avg
+      - time_waste_hours_total
+      - false_positive_rate
+    alerts:
+      - manipulation_detected
+      - capture_failure
+      - impersonation_failure
+      - abi_notification_failure
+    dashboard: "TelegramGuardPanel"
+

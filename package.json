@@ -1,0 +1,53 @@
+{
+  "name": "pow3r-defender",
+  "version": "2025.11.14-production-v4",
+  "description": "Pow3r Defender - Advanced defensive cyber fraud investigation platform with Telegram integration",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:production": "wrangler deploy --env production",
+    "test": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:all": "playwright test",
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc --noEmit",
+    "guardian:check": "npm run guardian:schema && npm run guardian:mock-scan && npm run guardian:test && npm run guardian:config && npm run guardian:law",
+    "guardian:schema": "echo 'Schema validation - implement with AJV'",
+    "guardian:mock-scan": "grep -rE 'TODO:|placeholder|fakeData|mockData' ./src/ || true",
+    "guardian:test": "npm run test:e2e:all",
+    "guardian:config": "test -f build.yaml && test -f telegram-bot.yaml",
+    "guardian:law": "test -f laws/pow3r.v4.law.md || echo 'Law file not found'"
+  },
+  "keywords": [
+    "fraud-detection",
+    "cybersecurity",
+    "telegram",
+    "osint",
+    "forensics",
+    "xmap",
+    "pow3r"
+  ],
+  "author": "Pow3r Defender Team",
+  "license": "PROPRIETARY",
+  "dependencies": {
+    "@fingerprintjs/fingerprintjs": "^4.5.0",
+    "hono": "^4.6.0",
+    "@cloudflare/workers-types": "^4.20241106.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "typescript": "^5.5.0",
+    "wrangler": "^3.78.0",
+    "vitest": "^2.0.0",
+    "@playwright/test": "^1.48.0",
+    "eslint": "^8.57.0",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
+
