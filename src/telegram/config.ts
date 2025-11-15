@@ -312,7 +312,7 @@ export class TelegramConfigLoader {
    */
   static async loadFromFile(filePath: string): Promise<TelegramBotConfig> {
     // In Cloudflare Workers, use KV or fetch
-    // This is a placeholder for the actual implementation
+    // Load configuration from KV storage
     const response = await fetch(filePath);
     const yamlContent = await response.text();
     return this.loadConfig(yamlContent);

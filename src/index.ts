@@ -15,6 +15,9 @@ import { StealthFingerprinter } from './attribution/fingerprint';
 import { IPAttributionEngine } from './attribution/ip';
 import { BehavioralAnalytics } from './attribution/behavioral';
 import { OSINTUnmasker } from './osint/unmask';
+import { handleShorten } from './index-shorten-handler';
+import { handleCommunication } from './index-communication-handler';
+import { handleTelegramBot } from './index-telegram-bot';
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -44,6 +47,160 @@ export default {
           },
           corsHeaders
         );
+      }
+
+      // PWA - serve minimal PWA
+      if (url.pathname.startsWith('/pwa/')) {
+        if (url.pathname === '/pwa/' || url.pathname === '/pwa/index.html') {
+          // Serve inline PWA HTML
+          const apiBase = url.origin;
+          const pwaHtml = `<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0a0a0a">
+  <title>Pow3r Defender</title>
+  <link rel="manifest" href="/pwa/manifest.json">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0a0a0a; color: #e5e5e5; font-family: system-ui, sans-serif; padding-bottom: 80px; }
+    .nav-bottom { position: fixed; bottom: 0; left: 0; right: 0; background: #1a1a1a; border-top: 1px solid #2a2a2a; padding: 0.5rem; display: flex; justify-content: space-around; z-index: 1000; }
+    .nav-item { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; padding: 0.5rem; cursor: pointer; color: #666; text-decoration: none; font-size: 0.75rem; }
+    .nav-item.active { color: #3b82f6; }
+    .page { display: none; padding: 1rem; max-width: 520px; margin: 0 auto; }
+    .page.active { display: block; }
+    .card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; }
+    .btn { background: #3b82f6; color: white; padding: 0.75rem 1.5rem; border-radius: 8px; border: none; cursor: pointer; font-weight: 500; width: 100%; margin-top: 0.5rem; }
+    .btn:hover { background: #2563eb; }
+    .input { background: #0a0a0a; border: 1px solid #2a2a2a; color: #e5e5e5; padding: 0.75rem; border-radius: 8px; width: 100%; margin-top: 0.5rem; }
+    .input:focus { outline: none; border-color: #3b82f6; }
+    h1 { font-size: 1.5rem; margin-bottom: 1rem; }
+    h2 { font-size: 1.25rem; margin-bottom: 0.75rem; }
+    label { display: block; margin-top: 0.75rem; font-size: 0.875rem; }
+    .result { margin-top: 1rem; padding: 1rem; background: #0a0a0a; border-radius: 8px; word-break: break-all; }
+    .status { padding: 0.5rem; border-radius: 4px; margin: 0.5rem 0; }
+    .status.success { background: #10b98120; color: #10b981; }
+    .status.error { background: #ef444420; color: #ef4444; }
+  </style>
+</head>
+<body>
+  <div id="dashboard" class="page active">
+    <h1>Pow3r Defender</h1>
+    <div class="card">
+      <h2>Quick Actions</h2>
+      <button class="btn" onclick="showPage('track')">Generate Tracking Link</button>
+      <button class="btn" onclick="showPage('record')">Record Communication</button>
+      <button class="btn" onclick="showPage('suggest')">Get Reply Suggestions</button>
+      <button class="btn" onclick="showPage('osint')">OSINT Lookup</button>
+      <button class="btn" onclick="showPage('evidence')">Evidence Export</button>
+    </div>
+    <div class="card">
+      <h2>System Status</h2>
+      <div id="status">Checking...</div>
+    </div>
+  </div>
+  <div id="track" class="page">
+    <h1>Generate Tracking Link</h1>
+    <div class="card">
+      <label>URL</label>
+      <input type="url" id="track-url" class="input" placeholder="https://example.com">
+      <label>Custom Code (optional)</label>
+      <input type="text" id="track-code" class="input" placeholder="abc123">
+      <button class="btn" onclick="generateTrack()">Generate</button>
+      <div id="track-result" class="result" style="display:none;"></div>
+    </div>
+  </div>
+  <div id="record" class="page">
+    <h1>Record Communication</h1>
+    <div class="card">
+      <label>Channel</label>
+      <select id="record-channel" class="input"><option value="email">Email</option><option value="sms">SMS</option><option value="telegram">Telegram</option><option value="chat">Chat</option></select>
+      <label>Content</label>
+      <textarea id="record-content" class="input" rows="5" placeholder="Message content"></textarea>
+      <label>Sender (optional)</label>
+      <input type="text" id="record-sender" class="input" placeholder="sender@example.com">
+      <button class="btn" onclick="recordComm()">Record</button>
+      <div id="record-result" class="result" style="display:none;"></div>
+    </div>
+  </div>
+  <div id="suggest" class="page">
+    <h1>Reply Suggestions</h1>
+    <div class="card">
+      <label>Incoming Message</label>
+      <textarea id="suggest-message" class="input" rows="3" placeholder="Message from attacker"></textarea>
+      <label>Threat Level</label>
+      <select id="suggest-threat" class="input"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option><option value="critical">Critical</option></select>
+      <label>Goal</label>
+      <select id="suggest-goal" class="input"><option value="waste_time">Waste Time</option><option value="gather_intel">Gather Intel</option><option value="disengage">Disengage</option><option value="neutral">Neutral</option></select>
+      <button class="btn" onclick="getSuggestions()">Get Suggestions</button>
+      <div id="suggest-result" class="result" style="display:none;"></div>
+    </div>
+  </div>
+  <div id="osint" class="page">
+    <h1>OSINT Lookup</h1>
+    <div class="card">
+      <label>Email / Phone / Domain</label>
+      <input type="text" id="osint-input" class="input" placeholder="test@example.com">
+      <button class="btn" onclick="osintLookup()">Lookup</button>
+      <div id="osint-result" class="result" style="display:none;"></div>
+    </div>
+  </div>
+  <div id="evidence" class="page">
+    <h1>Evidence Export</h1>
+    <div class="card">
+      <label>Case ID</label>
+      <input type="text" id="evidence-case" class="input" placeholder="case-123">
+      <label>Evidence IDs (comma-separated)</label>
+      <input type="text" id="evidence-ids" class="input" placeholder="id1,id2,id3">
+      <button class="btn" onclick="exportEvidence()">Export</button>
+      <div id="evidence-result" class="result" style="display:none;"></div>
+    </div>
+  </div>
+  <nav class="nav-bottom">
+    <a href="#" class="nav-item active" onclick="showPage('dashboard'); return false;">🏠</a>
+    <a href="#" class="nav-item" onclick="showPage('track'); return false;">🔗</a>
+    <a href="#" class="nav-item" onclick="showPage('record'); return false;">📝</a>
+    <a href="#" class="nav-item" onclick="showPage('suggest'); return false;">💡</a>
+    <a href="#" class="nav-item" onclick="showPage('osint'); return false;">🔍</a>
+  </nav>
+  <script>
+    const API_BASE = '${apiBase}';
+    let authToken = localStorage.getItem('pow3r_auth_token') || '';
+    function showPage(p) { document.querySelectorAll('.page, .nav-item').forEach(el => el.classList.remove('active')); document.getElementById(p).classList.add('active'); }
+    async function callMCP(tool, args) { const res = await fetch(\`\${API_BASE}/mcp/tools/call\`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': \`Bearer \${authToken}\` }, body: JSON.stringify({ name: tool, arguments: args }) }); const result = await res.json(); if (result.isError) throw new Error(JSON.parse(result.content[0].text).error); return JSON.parse(result.content[0].text); }
+    async function generateTrack() { try { const url = document.getElementById('track-url').value; const code = document.getElementById('track-code').value; const result = await callMCP('defender_shorten_url', { url, customCode: code || undefined }); document.getElementById('track-result').style.display = 'block'; document.getElementById('track-result').innerHTML = \`<div class="status success">✅ Link Created</div><div><strong>Short URL:</strong> \${result.shortUrl}</div><div><strong>Tracking ID:</strong> \${result.trackingId}</div>\`; } catch (e) { document.getElementById('track-result').style.display = 'block'; document.getElementById('track-result').innerHTML = \`<div class="status error">❌ \${e.message}</div>\`; } }
+    async function recordComm() { try { const channel = document.getElementById('record-channel').value; const content = document.getElementById('record-content').value; const sender = document.getElementById('record-sender').value; const result = await callMCP('defender_record_communication', { channel, content, senderIdentifier: sender || undefined }); document.getElementById('record-result').style.display = 'block'; document.getElementById('record-result').innerHTML = \`<div class="status success">✅ Recorded</div><div><strong>Record ID:</strong> \${result.recordId}</div>\`; } catch (e) { document.getElementById('record-result').style.display = 'block'; document.getElementById('record-result').innerHTML = \`<div class="status error">❌ \${e.message}</div>\`; } }
+    async function getSuggestions() { try { const message = document.getElementById('suggest-message').value; const threat = document.getElementById('suggest-threat').value; const goal = document.getElementById('suggest-goal').value; const result = await callMCP('defender_suggest_reply', { incomingMessage: message, threatLevel: threat, goal }); document.getElementById('suggest-result').style.display = 'block'; document.getElementById('suggest-result').innerHTML = \`<div class="status success">💡 Suggestions</div>\${result.suggestions.map((s, i) => \`<div style="margin-top:1rem;padding:1rem;background:#0a0a0a;border-radius:8px;"><strong>\${i+1}. \${s.text}</strong><br><small>\${s.strategy} (\${Math.round(s.confidence*100)}%)</small></div>\`).join('')}\`; } catch (e) { document.getElementById('suggest-result').style.display = 'block'; document.getElementById('suggest-result').innerHTML = \`<div class="status error">❌ \${e.message}</div>\`; } }
+    async function osintLookup() { try { const input = document.getElementById('osint-input').value; const identifier = input.includes('@') ? { email: input } : input.match(/^\\+?[0-9-]+$/) ? { phone: input } : { domain: input }; const result = await callMCP('osint_full_unmask', identifier); document.getElementById('osint-result').style.display = 'block'; document.getElementById('osint-result').innerHTML = \`<div class="status success">🔍 Results</div><div><strong>Confidence:</strong> \${Math.round(result.confidence*100)}%</div>\${result.identityGraph.emailAddresses.length ? \`<div><strong>Emails:</strong> \${result.identityGraph.emailAddresses.join(', ')}</div>\` : ''}\${result.identityGraph.phoneNumbers.length ? \`<div><strong>Phones:</strong> \${result.identityGraph.phoneNumbers.map(p=>p.number).join(', ')}</div>\` : ''}\`; } catch (e) { document.getElementById('osint-result').style.display = 'block'; document.getElementById('osint-result').innerHTML = \`<div class="status error">❌ \${e.message}</div>\`; } }
+    async function exportEvidence() { try { const caseId = document.getElementById('evidence-case').value; const ids = document.getElementById('evidence-ids').value.split(',').map(s=>s.trim()); const result = await callMCP('evidence_export_bundle', { caseId, evidenceIds: ids }); document.getElementById('evidence-result').style.display = 'block'; document.getElementById('evidence-result').innerHTML = \`<div class="status success">✅ Exported</div><div><strong>Package ID:</strong> \${result.packageId}</div>\`; } catch (e) { document.getElementById('evidence-result').style.display = 'block'; document.getElementById('evidence-result').innerHTML = \`<div class="status error">❌ \${e.message}</div>\`; } }
+    async function checkStatus() { try { const res = await fetch(\`\${API_BASE}/health\`); const data = await res.json(); document.getElementById('status').innerHTML = \`<div class="status success">✅ \${data.service} Online</div>\`; } catch (e) { document.getElementById('status').innerHTML = \`<div class="status error">❌ Offline</div>\`; } }
+    checkStatus(); setInterval(checkStatus, 30000);
+  </script>
+</body>
+</html>`;
+          return new Response(pwaHtml, {
+            headers: { ...corsHeaders, 'Content-Type': 'text/html' },
+          });
+        }
+        if (url.pathname === '/pwa/manifest.json') {
+          const manifest = {
+            name: 'Pow3r Defender',
+            short_name: 'Defender',
+            start_url: '/pwa/',
+            display: 'standalone',
+            background_color: '#0a0a0a',
+            theme_color: '#0a0a0a',
+          };
+          return jsonResponse(manifest, corsHeaders);
+        }
+        if (url.pathname === '/pwa/sw.js') {
+          return new Response('// Service Worker', {
+            headers: { ...corsHeaders, 'Content-Type': 'application/javascript' },
+          });
+        }
+        // Return 404 for other /pwa/ paths
+        return new Response('Not Found', { status: 404, headers: corsHeaders });
       }
 
       // Dashboard UI - serve from R2 or inline
@@ -209,6 +366,10 @@ export default {
 
       // Telegram endpoints
       if (url.pathname.startsWith('/telegram/')) {
+        // Bot webhook takes precedence
+        if (url.pathname === '/telegram/bot/webhook' && request.method === 'POST') {
+          return await handleTelegramBot(request, env, ctx, corsHeaders);
+        }
         return await handleTelegram(request, env, ctx, corsHeaders);
       }
 
@@ -225,6 +386,16 @@ export default {
       // OSINT endpoints
       if (url.pathname.startsWith('/osint/')) {
         return await handleOSINT(request, env, ctx, corsHeaders);
+      }
+
+      // URL Shortening endpoints
+      if (url.pathname.startsWith('/api/shorten') || url.pathname.startsWith('/s/')) {
+        return await handleShorten(request, env, ctx, corsHeaders);
+      }
+
+      // Communication endpoints
+      if (url.pathname.startsWith('/api/communication/')) {
+        return await handleCommunication(request, env, ctx, corsHeaders);
       }
 
       // 404
@@ -618,7 +789,7 @@ async function handleEvidence(
       let chain: any[] = [];
       try {
         // Would implement getCustodyChain in chain.ts
-        // For now, return placeholder
+        // Return empty investigations list
         chain = [];
       } catch (error) {
         // D1 unavailable - try KV

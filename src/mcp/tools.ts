@@ -1,8 +1,8 @@
 /**
  * MCP Tools Implementation
  * 
- * All 13 MCP tools for Pow3r Defender:
- * - defender_* tools (4)
+ * All 16 MCP tools for Pow3r Defender:
+ * - defender_* tools (7)
  * - telegram_* tools (3)
  * - osint_* tools (1)
  * - evidence_* tools (1)
@@ -16,6 +16,10 @@ import { OSINTUnmasker } from '../osint/unmask';
 import { EnhancedEvidenceChain } from '../forensic/chain';
 import { XMAPClient } from '../xmap/integration';
 import { CovertTracker } from '../honeypot/tracking';
+import { URLShortener } from '../honeypot/shortener';
+import { CommunicationRecorder } from '../communication/recorder';
+import { ReplySuggestionEngine } from '../communication/reply-suggestions';
+import { handleShortenURL, handleRecordCommunication, handleSuggestReply } from './tools-new';
 
 export interface MCPTool {
   name: string;
@@ -265,6 +269,15 @@ export async function executeMCPTool(
 
       case 'xmap_sync_from_repo':
         return await handleXMAPSyncFromRepo(args, env);
+
+      case 'defender_shorten_url':
+        return await handleShortenURL(args, env);
+
+      case 'defender_record_communication':
+        return await handleRecordCommunication(args, env);
+
+      case 'defender_suggest_reply':
+        return await handleSuggestReply(args, env);
 
       default:
         return {

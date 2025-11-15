@@ -1,0 +1,84 @@
+name: Guardian System Validation
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  guardian:
+    name: Guardian Gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Gate 1: Schema Validation
+      - name: Gate 1 - Schema Validation
+        run: |
+          if [ -f "build.yaml" ]; then
+            echo "✅ build.yaml exists"
+          else
+            echo "❌ build.yaml missing"
+            exit 1
+          fi
+
+      # Gate 2: Mock Code Scan
+      - name: Gate 2 - Mock Code Scan
+        run: |
+          if grep -rE "TODO:|FIXME:|placeholder|fakeData|mockData|fake-|mock-|test-only" ./src/ 2>/dev/null; then
+            echo "❌ Mock code patterns found"
+            exit 1
+          fi
+          echo "✅ No mock code patterns found"
+
+      # Gate 3: TypeScript Compilation
+      - name: Gate 3 - TypeScript Compilation
+        run: |
+          npx tsc --noEmit
+          echo "✅ TypeScript compilation passed"
+
+      # Gate 4: Configuration Integrity
+      - name: Gate 4 - Configuration Integrity
+        run: |
+          if [ ! -f "build.yaml" ]; then
+            echo "❌ build.yaml missing"
+            exit 1
+          fi
+          if [ ! -f "wrangler.toml" ]; then
+            echo "❌ wrangler.toml missing"
+            exit 1
+          fi
+          if [ ! -f "schema.sql" ]; then
+            echo "❌ schema.sql missing"
+            exit 1
+          fi
+          echo "✅ All required configuration files present"
+
+      # Gate 5: Constitutional Compliance
+      - name: Gate 5 - Constitutional Compliance
+        run: |
+          if [ ! -f "build.yaml" ]; then
+            echo "❌ build.yaml (constitution) missing"
+            exit 1
+          fi
+          if ! grep -q "project_constitution" build.yaml; then
+            echo "❌ project_constitution not found in build.yaml"
+            exit 1
+          fi
+          echo "✅ Constitutional compliance verified"
+
+      # Deployment Validation
+      - name: Deployment Validation
+        run: |
+          echo "✅ All Guardian gates passed"
+          echo "✅ Ready for deployment"
+

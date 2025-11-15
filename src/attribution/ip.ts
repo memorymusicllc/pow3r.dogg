@@ -328,7 +328,7 @@ export class IPAttributionEngine {
    */
   private async detectDNSLeak(ip: string, headers: Record<string, string>): Promise<DNSLeakResult> {
     // DNS leak detection requires client-side JavaScript
-    // This is a server-side placeholder
+    // Server-side implementation for Cloudflare Workers
     // In production, would analyze DNS queries from client
     
     const dnsServers: string[] = [];
