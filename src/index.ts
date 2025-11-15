@@ -204,6 +204,38 @@ export default {
         return new Response('Not Found', { status: 404, headers: corsHeaders });
       }
 
+      // Serve dashboard assets (CSS, JS, images) - handle /assets/ requests
+      if (url.pathname.startsWith('/assets/') || url.pathname.startsWith('/vite.svg')) {
+        try {
+          const assetPath = url.pathname.startsWith('/vite.svg') ? 'dashboard/dist/vite.svg' : `dashboard/dist${url.pathname}`;
+          const object = await env.EVIDENCE_VAULT.get(assetPath);
+          if (object) {
+            const contentType = url.pathname.endsWith('.js')
+              ? 'application/javascript'
+              : url.pathname.endsWith('.css')
+              ? 'text/css'
+              : url.pathname.endsWith('.json')
+              ? 'application/json'
+              : url.pathname.endsWith('.png')
+              ? 'image/png'
+              : url.pathname.endsWith('.svg')
+              ? 'image/svg+xml'
+              : 'application/octet-stream';
+            
+            return new Response(await object.arrayBuffer(), {
+              headers: {
+                ...corsHeaders,
+                'Content-Type': contentType,
+                'Cache-Control': 'public, max-age=31536000, immutable',
+              },
+            });
+          }
+        } catch (error) {
+          console.warn('Failed to load asset from R2:', url.pathname, error);
+        }
+        return new Response('Asset not found', { status: 404, headers: corsHeaders });
+      }
+
       // React Dashboard - serve from R2 or fallback
       if (url.pathname === '/admin' || url.pathname.startsWith('/admin/')) {
         // Check if it's an API endpoint first
@@ -220,24 +252,39 @@ export default {
             
             const object = await env.EVIDENCE_VAULT.get(r2Key);
             if (object) {
-              const contentType = url.pathname.endsWith('.js')
-                ? 'application/javascript'
-                : url.pathname.endsWith('.css')
-                ? 'text/css'
-                : url.pathname.endsWith('.json')
-                ? 'application/json'
-                : url.pathname.endsWith('.png')
-                ? 'image/png'
-                : url.pathname.endsWith('.svg')
-                ? 'image/svg+xml'
-                : 'text/html';
-              
-              return new Response(await object.arrayBuffer(), {
-                headers: {
-                  ...corsHeaders,
-                  'Content-Type': contentType,
-                },
-              });
+              // Read HTML and rewrite asset paths if needed
+              if (url.pathname === '/admin' || url.pathname === '/admin/') {
+                let html = await object.text();
+                // Ensure assets are served from root /assets/ path
+                html = html.replace(/href="\/assets\//g, 'href="/assets/');
+                html = html.replace(/src="\/assets\//g, 'src="/assets/');
+                
+                return new Response(html, {
+                  headers: {
+                    ...corsHeaders,
+                    'Content-Type': 'text/html',
+                  },
+                });
+              } else {
+                const contentType = url.pathname.endsWith('.js')
+                  ? 'application/javascript'
+                  : url.pathname.endsWith('.css')
+                  ? 'text/css'
+                  : url.pathname.endsWith('.json')
+                  ? 'application/json'
+                  : url.pathname.endsWith('.png')
+                  ? 'image/png'
+                  : url.pathname.endsWith('.svg')
+                  ? 'image/svg+xml'
+                  : 'text/html';
+                
+                return new Response(await object.arrayBuffer(), {
+                  headers: {
+                    ...corsHeaders,
+                    'Content-Type': contentType,
+                  },
+                });
+              }
             }
           } catch (error) {
             console.warn('Failed to load React dashboard from R2:', error);
@@ -258,7 +305,8 @@ export default {
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/admin/assets/main.js"></script>
+    <script type="module" src="/assets/index-WwelWwOG.js"></script>
+    <link rel="stylesheet" href="/assets/index-DvyXkRZo.css">
   </body>
 </html>`;
             return new Response(reactAppHtml, {
