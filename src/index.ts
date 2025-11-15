@@ -585,7 +585,7 @@ async function handleAttribution(
   if (url.pathname === '/attribution/ip' && request.method === 'POST') {
     try {
       const body = await request.json() as Record<string, unknown>;
-      const ip = body.ip || request.headers.get('CF-Connecting-IP') || 'unknown';
+      const ip = (body.ip as string) || request.headers.get('CF-Connecting-IP') || 'unknown';
 
       const headers: Record<string, string> = {};
       request.headers.forEach((value, key) => {
@@ -593,7 +593,7 @@ async function handleAttribution(
       });
 
       const ipEngine = new IPAttributionEngine(env);
-      const attribution = await ipEngine.attributeIP(ip, headers as Record<string, string>);
+      const attribution = await ipEngine.attributeIP(ip, headers);
 
       return jsonResponse({ success: true, attribution }, corsHeaders);
     } catch (error) {
