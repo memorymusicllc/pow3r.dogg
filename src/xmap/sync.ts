@@ -15,7 +15,7 @@ export interface XMAPSyncEvent {
   xmapId: string;
   repoUrl: string;
   changeType: 'update' | 'merge' | 'sync';
-  changedBy: 'github_webhook' | 'mcp_tool' | 'manual';
+  changedBy: 'github_webhook' | 'mcp_tool' | 'manual' | 'kv_poll';
   timestamp: string;
   diff?: XMAPDiff;
 }
@@ -109,7 +109,7 @@ export class XMAPSyncHandler {
   private async syncXMAP(
     xmapId: string,
     repoUrl: string,
-    changedBy: 'github_webhook' | 'mcp_tool' | 'manual'
+    changedBy: 'github_webhook' | 'mcp_tool' | 'manual' | 'kv_poll'
   ): Promise<XMAPSyncEvent> {
     // Get previous version for diff calculation
     const previousVersion = await this.getPreviousVersion(xmapId);

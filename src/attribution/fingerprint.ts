@@ -137,7 +137,7 @@ export class StealthFingerprinter {
     ];
 
     for (const pattern of spoofingPatterns) {
-      if (pattern.test(userAgent) || pattern.test(platform)) {
+      if (pattern.test(userAgent) || pattern.test(platformValue)) {
         return true;
       }
     }

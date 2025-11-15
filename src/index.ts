@@ -134,9 +134,9 @@ async function handleMCP(
     }
 
     // Parse request
-    const body = await request.json();
-    const toolName = body.name || body.tool;
-    const args = body.arguments || body.args || {};
+    const body = await request.json() as Record<string, unknown>;
+    const toolName = (body.name || body.tool) as string;
+    const args = (body.arguments || body.args || {}) as Record<string, unknown>;
 
     if (!toolName) {
       return jsonResponse(
@@ -210,9 +210,23 @@ async function handleXMAP(
   // GitHub webhook
   if (url.pathname === '/xmap/webhook/github' && request.method === 'POST') {
     try {
-      const event = await request.json();
+      const event = await request.json() as {
+        action?: string;
+        repository?: { url?: string; full_name?: string };
+        commits?: Array<{ id?: string; message?: string }>;
+      };
       const syncHandler = new XMAPSyncHandler(env);
-      const syncEvent = await syncHandler.handleGitHubWebhook(event);
+      const syncEvent = await syncHandler.handleGitHubWebhook({
+        action: event.action || 'unknown',
+        repository: {
+          url: event.repository?.url || '',
+          full_name: event.repository?.full_name || '',
+        },
+        commits: (event.commits || []).map(c => ({
+          id: c.id || '',
+          message: c.message || '',
+        })),
+      });
       return jsonResponse({ success: true, event: syncEvent }, corsHeaders);
     } catch (error) {
       console.error('XMAP webhook error:', error);
@@ -267,7 +281,7 @@ async function handleTelegram(
   // Guard Dog endpoint
   if (url.pathname === '/telegram/guard' && request.method === 'POST') {
     try {
-      const body = await request.json();
+      const body = await request.json() as Record<string, unknown>;
       const { GuardDog } = await import('./telegram/guard');
       
       const guardDog = new GuardDog(env);
@@ -300,28 +314,31 @@ async function handleTelegram(
   // Impersonation endpoint
   if (url.pathname === '/telegram/impersonate' && request.method === 'POST') {
     try {
-      const body = await request.json();
+      const body = await request.json() as Record<string, unknown>;
       const { ImpersonationBot } = await import('./telegram/impersonate');
       
       const impersonationBot = new ImpersonationBot(env);
       
       if (body.action === 'enable') {
         const state = await impersonationBot.enable(
-          body.chatId,
-          body.attackerId,
-          body.victimId,
-          body.styleData
+          body.chatId as string,
+          body.attackerId as string,
+          body.victimId as string,
+          body.styleData as Record<string, unknown>
         );
         return jsonResponse({ success: true, state }, corsHeaders);
       } else if (body.action === 'generate') {
         const response = await impersonationBot.generateResponse(
-          body.chatId,
-          body.attackerId,
-          body.message
+          body.chatId as string,
+          body.attackerId as string,
+          body.message as Record<string, unknown>
         );
         return jsonResponse({ success: true, response }, corsHeaders);
       } else if (body.action === 'disable') {
-        await impersonationBot.disable(body.chatId, body.attackerId);
+        await impersonationBot.disable(
+          body.chatId as string,
+          body.attackerId as string
+        );
         return jsonResponse({ success: true }, corsHeaders);
       }
       
@@ -338,7 +355,7 @@ async function handleTelegram(
   // Capture endpoint
   if (url.pathname === '/telegram/capture' && request.method === 'POST') {
     try {
-      const body = await request.json();
+      const body = await request.json() as Record<string, unknown>;
       const { MessageCapture } = await import('./telegram/capture');
       
       const capture = new MessageCapture(env);
@@ -381,7 +398,7 @@ async function handleEvidence(
   // Store evidence
   if (url.pathname === '/evidence/store' && request.method === 'POST') {
     try {
-      const body = await request.json();
+      const body = await request.json() as Record<string, unknown>;
       const evidenceChain = new EnhancedEvidenceChain(env);
 
       // Initialize schema if needed (graceful if D1 unavailable)
@@ -392,11 +409,11 @@ async function handleEvidence(
       }
 
       const evidenceId = await evidenceChain.storeEvidence({
-        type: body.type || 'unknown',
-        content: new TextEncoder().encode(body.content || ''),
-        metadata: body.metadata || {},
-        timestamp: body.timestamp || new Date().toISOString(),
-        collectedBy: body.collectedBy || 'system',
+        type: (body.type as string) || 'unknown',
+        content: new TextEncoder().encode((body.content as string) || ''),
+        metadata: (body.metadata as Record<string, unknown>) || {},
+        timestamp: (body.timestamp as string) || new Date().toISOString(),
+        collectedBy: (body.collectedBy as string) || 'system',
       });
 
       return jsonResponse({ success: true, evidenceId }, corsHeaders);
@@ -477,7 +494,7 @@ async function handleEvidence(
   // Export bundle
   if (url.pathname === '/evidence/export' && request.method === 'POST') {
     try {
-      const body = await request.json();
+      const body = await request.json() as Record<string, unknown>;
       const evidenceChain = new EnhancedEvidenceChain(env);
       const package_ = await evidenceChain.exportEvidencePackage(
         body.caseId,
@@ -513,7 +530,7 @@ async function handleAttribution(
   // Fingerprint
   if (url.pathname === '/attribution/fingerprint' && request.method === 'POST') {
     try {
-      const body = await request.json();
+      const body = await request.json() as Record<string, unknown>;
       const fingerprinter = new StealthFingerprinter({
         enableStealth: true,
         collectionDelayMin: 5,
@@ -541,7 +558,7 @@ async function handleAttribution(
   // IP attribution
   if (url.pathname === '/attribution/ip' && request.method === 'POST') {
     try {
-      const body = await request.json();
+      const body = await request.json() as Record<string, unknown>;
       const ip = body.ip || request.headers.get('CF-Connecting-IP') || 'unknown';
 
       const headers: Record<string, string> = {};
@@ -566,7 +583,7 @@ async function handleAttribution(
   // Behavioral analytics
   if (url.pathname === '/attribution/behavioral' && request.method === 'POST') {
     try {
-      const body = await request.json();
+      const body = await request.json() as Record<string, unknown>;
       const analytics = new BehavioralAnalytics();
 
       // Process behavioral events from body
@@ -610,7 +627,7 @@ async function handleOSINT(
   // Full unmask
   if (url.pathname === '/osint/unmask' && request.method === 'POST') {
     try {
-      const body = await request.json();
+      const body = await request.json() as Record<string, unknown>;
       const unmasker = new OSINTUnmasker(env);
       const result = await unmasker.unmaskIdentity({
         email: body.email,

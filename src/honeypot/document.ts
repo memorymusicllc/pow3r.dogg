@@ -46,23 +46,17 @@ export class HoneypotDocumentGenerator {
     const contentWithTracking = this.embedTracking(content, trackingPixels);
 
     // Generate document based on format
-    let documentData: ArrayBuffer;
+    let documentData: Uint8Array;
     switch (format) {
-      case 'pdf': {
-        const pdfBytes = await this.generatePDF(contentWithTracking, trackingPixels);
-        documentData = pdfBytes.buffer;
+      case 'pdf':
+        documentData = await this.generatePDF(contentWithTracking, trackingPixels);
         break;
-      }
-      case 'docx': {
-        const docxBytes = await this.generateDOCX(contentWithTracking, trackingPixels);
-        documentData = docxBytes.buffer;
+      case 'docx':
+        documentData = await this.generateDOCX(contentWithTracking, trackingPixels);
         break;
-      }
-      case 'xlsx': {
-        const xlsxBytes = await this.generateXLSX(contentWithTracking, trackingPixels);
-        documentData = xlsxBytes.buffer;
+      case 'xlsx':
+        documentData = await this.generateXLSX(contentWithTracking, trackingPixels);
         break;
-      }
       default:
         throw new Error(`Unsupported format: ${format}`);
     }
@@ -127,7 +121,7 @@ export class HoneypotDocumentGenerator {
   /**
    * Generate PDF (simplified)
    */
-  private async generatePDF(content: string, trackingPixels: string[]): Promise<ArrayBuffer> {
+  private async generatePDF(content: string, trackingPixels: string[]): Promise<Uint8Array> {
     // In production, would use a PDF generation library
     // For now, create a simple text-based representation
     const pdfContent = `%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n>>\nendobj\n\n% Content: ${content}\n% Tracking: ${trackingPixels.join(', ')}\n`;
@@ -137,7 +131,7 @@ export class HoneypotDocumentGenerator {
   /**
    * Generate DOCX (simplified)
    */
-  private async generateDOCX(content: string, trackingPixels: string[]): Promise<ArrayBuffer> {
+  private async generateDOCX(content: string, trackingPixels: string[]): Promise<Uint8Array> {
     // In production, would use a DOCX generation library
     // For now, create a simple representation
     const docxContent = `<?xml version="1.0"?>\n<document>\n<content>${content}</content>\n<tracking>${trackingPixels.join(', ')}</tracking>\n</document>`;
@@ -147,7 +141,7 @@ export class HoneypotDocumentGenerator {
   /**
    * Generate XLSX (simplified)
    */
-  private async generateXLSX(content: string, trackingPixels: string[]): Promise<ArrayBuffer> {
+  private async generateXLSX(content: string, trackingPixels: string[]): Promise<Uint8Array> {
     // In production, would use an XLSX generation library
     // For now, create a simple representation
     const xlsxContent = `<?xml version="1.0"?>\n<workbook>\n<sheet>\n<row><cell>${content}</cell></row>\n<row><cell>Tracking: ${trackingPixels.join(', ')}</cell></row>\n</sheet>\n</workbook>`;

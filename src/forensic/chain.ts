@@ -158,7 +158,7 @@ export class EnhancedEvidenceChain {
 
     // Calculate hash
     const entryBytes = new TextEncoder().encode(JSON.stringify(entryData));
-    const hash = await this.calculateHash(entryBytes.buffer);
+    const hash = await this.calculateHash(new Uint8Array(entryBytes).buffer);
 
     // Store in D1 (graceful fallback to KV if D1 unavailable)
     try {
@@ -557,7 +557,8 @@ export class EnhancedEvidenceChain {
     // Simplified GPG signing
     // In production, would use actual GPG implementation
     const packageData = JSON.stringify(package_);
-    const signature = await this.calculateHash(new TextEncoder().encode(packageData));
+    const packageBytes = new TextEncoder().encode(packageData);
+    const signature = await this.calculateHash(new Uint8Array(packageBytes).buffer);
     return `GPG-SIGNATURE:${signature}`;
   }
 

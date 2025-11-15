@@ -184,7 +184,7 @@ export class OSINTUnmasker {
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const data = await response.json() as Record<string, unknown>;
         additionalEmails.push(...(data.alternate_emails || []));
         socialMedia.linkedin = data.linkedin || null;
         socialMedia.twitter = data.twitter || null;
@@ -212,7 +212,7 @@ export class OSINTUnmasker {
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const data = await response.json() as Record<string, unknown>;
         breaches.push(...data.map((b: { Name: string }) => b.Name));
       }
     } catch (error) {
@@ -227,7 +227,7 @@ export class OSINTUnmasker {
       );
 
       if (response.ok) {
-        const data = await response.json();
+        const data = await response.json() as Record<string, unknown>;
         if (data.data?.domain) {
           timeline.push({
             date: new Date().toISOString().split('T')[0],
@@ -268,7 +268,7 @@ export class OSINTUnmasker {
       );
 
       if (response.ok) {
-        const data = await response.json();
+        const data = await response.json() as Record<string, unknown>;
         const type = data.line_type === 'mobile' ? 'mobile' : data.line_type === 'voip' ? 'voip' : 'landline';
         
         timeline.push({
@@ -314,7 +314,7 @@ export class OSINTUnmasker {
       );
 
       if (response.ok) {
-        const data = await response.json();
+        const data = await response.json() as Record<string, unknown>;
         const creationDate = data.WhoisRecord?.registryData?.createdDate || 
                            data.WhoisRecord?.createdDate;
         

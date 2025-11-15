@@ -131,7 +131,7 @@ export class MessageCapture {
   private async captureScreenshot(messageData: {
     text?: string;
     photo?: string;
-  }): Promise<ArrayBuffer> {
+  }): Promise<Uint8Array> {
     // In production, this would use a screenshot service
     // For now, create a text representation
     const screenshotText = messageData.text || messageData.photo || 'Message captured';
@@ -142,7 +142,7 @@ export class MessageCapture {
    * Extract OCR text
    */
   private async extractOCR(
-    screenshotData: ArrayBuffer,
+    screenshotData: Uint8Array,
     originalText?: string
   ): Promise<string> {
     // If original text is available, use it
@@ -153,7 +153,7 @@ export class MessageCapture {
     // In production, this would use Tesseract or similar OCR service
     // For now, decode the screenshot data as text
     try {
-      return new TextDecoder().decode(screenshotData);
+      return new TextDecoder().decode(screenshotData.buffer);
     } catch {
       return 'OCR extraction failed - text not available';
     }

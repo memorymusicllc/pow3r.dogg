@@ -67,7 +67,7 @@ export class XMAPClient {
       throw new Error(`XMAP initialization failed: ${response.statusText}`);
     }
 
-    const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
     return data.data;
   }
 
@@ -91,7 +91,7 @@ export class XMAPClient {
       throw new Error(`XMAP generation failed: ${response.statusText}`);
     }
 
-    const result = await response.json();
+      const result = await response.json() as Record<string, unknown>;
     return result.content[0].text as unknown as XMAPData;
   }
 
@@ -142,7 +142,7 @@ export class XMAPClient {
       throw new Error(`XMAP validation failed: ${response.statusText}`);
     }
 
-    const result = await response.json();
+      const result = await response.json() as Record<string, unknown>;
     return result.content[0].text as { valid: boolean; errors?: string[] };
   }
 
@@ -166,7 +166,7 @@ export class XMAPClient {
       throw new Error(`XMAP merge failed: ${response.statusText}`);
     }
 
-    const result = await response.json();
+      const result = await response.json() as Record<string, unknown>;
     return result.content[0].text as unknown as XMAPData;
   }
 
@@ -190,7 +190,7 @@ export class XMAPClient {
       throw new Error(`XMAP sync failed: ${response.statusText}`);
     }
 
-    const result = await response.json();
+      const result = await response.json() as Record<string, unknown>;
     return result.content[0].text as unknown as XMAPData;
   }
 }
