@@ -29,18 +29,23 @@ export class TelegramAbiNotifier extends AbiNotifier {
     manipulationType: string,
     confidence: number
   ): Promise<void> {
-    await this.notify({
-      eventType: 'xmap_node_updated',
-      timestamp: new Date().toISOString(),
-      metadata: {
-        telegramChatId: chatId,
-        telegramUserId: userId,
-        messageId,
-        manipulationType,
-        confidence,
-        eventSubtype: 'manipulation_detected',
-      },
-    } as TelegramAbiEvent);
+    try {
+      await this.notify({
+        eventType: 'xmap_node_updated',
+        timestamp: new Date().toISOString(),
+        metadata: {
+          telegramChatId: chatId,
+          telegramUserId: userId,
+          messageId,
+          manipulationType,
+          confidence,
+          eventSubtype: 'manipulation_detected',
+        },
+      } as TelegramAbiEvent);
+    } catch (error) {
+      // Graceful degradation: log warning, continue operation
+      console.warn('Abi notification failed (non-critical, continuing):', error);
+    }
   }
 
   /**
@@ -52,17 +57,21 @@ export class TelegramAbiNotifier extends AbiNotifier {
     chatId: string,
     userId: string
   ): Promise<void> {
-    await this.notify({
-      eventType: 'impersonation_active',
-      investigationId,
-      attackerId,
-      timestamp: new Date().toISOString(),
-      metadata: {
-        telegramChatId: chatId,
-        telegramUserId: userId,
-        eventSubtype: 'impersonation_started',
-      },
-    } as TelegramAbiEvent);
+    try {
+      await this.notify({
+        eventType: 'impersonation_active',
+        investigationId,
+        attackerId,
+        timestamp: new Date().toISOString(),
+        metadata: {
+          telegramChatId: chatId,
+          telegramUserId: userId,
+          eventSubtype: 'impersonation_started',
+        },
+      } as TelegramAbiEvent);
+    } catch (error) {
+      console.warn('Abi notification failed (non-critical, continuing):', error);
+    }
   }
 
   /**
@@ -74,17 +83,21 @@ export class TelegramAbiNotifier extends AbiNotifier {
     duration: number,
     timeWasted: number
   ): Promise<void> {
-    await this.notify({
-      eventType: 'impersonation_active',
-      investigationId,
-      attackerId,
-      timestamp: new Date().toISOString(),
-      metadata: {
-        duration,
-        timeWasted,
-        eventSubtype: 'impersonation_ended',
-      },
-    } as TelegramAbiEvent);
+    try {
+      await this.notify({
+        eventType: 'impersonation_active',
+        investigationId,
+        attackerId,
+        timestamp: new Date().toISOString(),
+        metadata: {
+          duration,
+          timeWasted,
+          eventSubtype: 'impersonation_ended',
+        },
+      } as TelegramAbiEvent);
+    } catch (error) {
+      console.warn('Abi notification failed (non-critical, continuing):', error);
+    }
   }
 
   /**
@@ -96,17 +109,21 @@ export class TelegramAbiNotifier extends AbiNotifier {
     captureType: 'screenshot' | 'ocr' | 'metadata',
     evidenceId: string
   ): Promise<void> {
-    await this.notify({
-      eventType: 'evidence_package_ready',
-      investigationId,
-      timestamp: new Date().toISOString(),
-      metadata: {
-        messageId,
-        captureType,
-        evidenceId,
-        eventSubtype: 'evidence_captured',
-      },
-    } as TelegramAbiEvent);
+    try {
+      await this.notify({
+        eventType: 'evidence_package_ready',
+        investigationId,
+        timestamp: new Date().toISOString(),
+        metadata: {
+          messageId,
+          captureType,
+          evidenceId,
+          eventSubtype: 'evidence_captured',
+        },
+      } as TelegramAbiEvent);
+    } catch (error) {
+      console.warn('Abi notification failed (non-critical, continuing):', error);
+    }
   }
 }
 

@@ -59,24 +59,35 @@ export class AbiNotifier {
    * Notify Abi of an event
    */
   async notify(event: AbiNotificationEvent): Promise<void> {
-    // Check for duplicate events
-    const eventKey = this.getEventKey(event);
-    const recentEvent = await this.kv.get(eventKey);
-
-    if (recentEvent) {
-      console.log(`Skipping duplicate event: ${eventKey}`);
+    // Graceful degradation: if Abi webhook not configured, skip silently
+    if (!this.config.webhookUrl || this.config.webhookUrl === 'credential:abi_webhook_url') {
+      console.log('Abi webhook not configured, skipping notification (graceful degradation)');
       return;
     }
 
-    // Mark event as sent (with TTL for deduplication window)
-    await this.kv.put(
-      eventKey,
-      JSON.stringify({ timestamp: Date.now() }),
-      { expirationTtl: this.config.deduplicationWindow }
-    );
+    try {
+      // Check for duplicate events
+      const eventKey = this.getEventKey(event);
+      const recentEvent = await this.kv.get(eventKey);
 
-    // Send notification with retry logic
-    await this.sendWithRetry(event);
+      if (recentEvent) {
+        console.log(`Skipping duplicate event: ${eventKey}`);
+        return;
+      }
+
+      // Mark event as sent (with TTL for deduplication window)
+      await this.kv.put(
+        eventKey,
+        JSON.stringify({ timestamp: Date.now() }),
+        { expirationTtl: this.config.deduplicationWindow }
+      );
+
+      // Send notification with retry logic
+      await this.sendWithRetry(event);
+    } catch (error) {
+      // Graceful failure: log warning but don't throw
+      console.warn('Abi notification failed (non-critical, continuing):', error);
+    }
   }
 
   /**
@@ -111,15 +122,20 @@ export class AbiNotifier {
         return this.sendWithRetry(event, attempt + 1);
       }
 
-      // Log failure but don't throw - notification failure shouldn't break operations
-      console.error(`Failed to notify Abi after ${attempt} attempts:`, error);
+      // Log warning but don't throw - notification failure shouldn't break operations
+      console.warn(`Failed to notify Abi after ${attempt} attempts (non-critical):`, error);
       
-      // Store failed notification for manual retry
-      await this.kv.put(
-        `abi:failed:${Date.now()}`,
-        JSON.stringify({ event, error: String(error), timestamp: new Date().toISOString() }),
-        { expirationTtl: 86400 } // 24 hours
-      );
+      // Store failed notification for manual retry (optional)
+      try {
+        await this.kv.put(
+          `abi:failed:${Date.now()}`,
+          JSON.stringify({ event, error: String(error), timestamp: new Date().toISOString() }),
+          { expirationTtl: 86400 } // 24 hours
+        );
+      } catch (kvError) {
+        // Even KV storage failure is non-critical
+        console.warn('Failed to store Abi failure log (non-critical):', kvError);
+      }
     }
   }
 

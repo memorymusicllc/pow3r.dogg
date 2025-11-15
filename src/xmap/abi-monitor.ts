@@ -29,15 +29,20 @@ export class AbiProgressMonitor {
   async reportProgress(update: ProgressUpdate): Promise<void> {
     this.progressLog.push(update);
 
-    // Notify Abi of progress
-    await this.abiNotifier.notify({
-      eventType: 'xmap_node_updated',
-      timestamp: update.timestamp,
-      metadata: {
-        progressUpdate: update,
-        progressLog: this.progressLog,
-      },
-    });
+    // Notify Abi of progress (graceful failure)
+    try {
+      await this.abiNotifier.notify({
+        eventType: 'xmap_node_updated',
+        timestamp: update.timestamp,
+        metadata: {
+          progressUpdate: update,
+          progressLog: this.progressLog,
+        },
+      });
+    } catch (error) {
+      // Graceful degradation: continue without Abi
+      console.warn('Abi progress notification failed (non-critical):', error);
+    }
 
     console.log(`[Abi Monitor] ${update.step}: ${update.status} - ${update.message}`);
   }

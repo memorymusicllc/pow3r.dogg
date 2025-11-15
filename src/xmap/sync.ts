@@ -132,9 +132,13 @@ export class XMAPSyncHandler {
     // Store version history
     await this.storeVersionHistory(syncEvent);
 
-    // Trigger Abi notification if configured
+    // Trigger Abi notification if configured (graceful failure)
     if (this.env.ABI_WEBHOOK_URL) {
-      await this.notifyAbi(syncEvent);
+      try {
+        await this.notifyAbi(syncEvent);
+      } catch (error) {
+        console.warn('Abi notification failed (non-critical, continuing):', error);
+      }
     }
 
     return syncEvent;

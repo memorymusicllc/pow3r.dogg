@@ -118,7 +118,13 @@ export class IPAttributionEngine {
     // For now, use a geolocation API
     try {
       const response = await fetch(`https://ipapi.co/${ip}/json/`);
-      const data = await response.json();
+      const data = await response.json() as {
+        country_name?: string;
+        city?: string;
+        latitude?: number;
+        longitude?: number;
+        timezone?: string;
+      };
 
       return {
         country: data.country_name || 'Unknown',
@@ -143,7 +149,10 @@ export class IPAttributionEngine {
   private async getASNInfo(ip: string): Promise<ASNInfo> {
     try {
       const response = await fetch(`https://ipapi.co/${ip}/json/`);
-      const data = await response.json();
+      const data = await response.json() as {
+        asn?: string;
+        org?: string;
+      };
 
       const asn = data.asn || 'Unknown';
       const org = data.org || 'Unknown';
@@ -237,7 +246,11 @@ export class IPAttributionEngine {
         return { detected: false };
       }
 
-      const data = await response.json();
+      const data = await response.json() as {
+        vpn_detected?: boolean;
+        true_ip?: string;
+        vpn_provider?: string;
+      };
       
       if (data.vpn_detected && data.true_ip) {
         return {
@@ -268,7 +281,12 @@ export class IPAttributionEngine {
       const response = await fetch(
         `https://ipqualityscore.com/api/json/ip/${apiKey}/${ip}`
       );
-      const data = await response.json();
+      const data = await response.json() as {
+        vpn?: boolean;
+        proxy?: boolean;
+        provider?: string;
+        fraud_score?: number;
+      };
 
       if (data.vpn || data.proxy) {
         return {

@@ -75,7 +75,7 @@ export class EnhancedEvidenceChain {
     const hash = await this.calculateHash(artifact.content);
     
     // Encrypt content
-    const encrypted = await this.encryptContent(artifact.content, artifact.evidenceId || evidenceId);
+    const encrypted = await this.encryptContent(artifact.content, evidenceId);
     
     // Store in R2 (WORM-compatible)
     const key = `evidence/${evidenceId}.enc`;
@@ -91,21 +91,39 @@ export class EnhancedEvidenceChain {
       },
     });
 
-    // Store metadata in D1
-    await this.d1
-      .prepare(
-        'INSERT INTO evidence_artifacts (evidence_id, type, metadata, timestamp, collected_by, content_hash, storage_key) VALUES (?, ?, ?, ?, ?, ?, ?)'
-      )
-      .bind(
-        evidenceId,
-        artifact.type,
-        JSON.stringify(artifact.metadata),
-        artifact.timestamp,
-        artifact.collectedBy,
-        hash,
-        key
-      )
-      .run();
+    // Store metadata in D1 (graceful fallback to KV if D1 unavailable)
+    try {
+      await this.d1
+        .prepare(
+          'INSERT INTO evidence_artifacts (evidence_id, type, metadata, timestamp, collected_by, content_hash, storage_key) VALUES (?, ?, ?, ?, ?, ?, ?)'
+        )
+        .bind(
+          evidenceId,
+          artifact.type,
+          JSON.stringify(artifact.metadata),
+          artifact.timestamp,
+          artifact.collectedBy,
+          hash,
+          key
+        )
+        .run();
+    } catch (error) {
+      // D1 unavailable - use KV fallback
+      console.warn('D1 unavailable, using KV fallback for evidence metadata:', error);
+      const kv = this.env.DEFENDER_FORGE;
+      await kv.put(
+        `evidence:${evidenceId}`,
+        JSON.stringify({
+          evidenceId,
+          type: artifact.type,
+          metadata: artifact.metadata,
+          timestamp: artifact.timestamp,
+          collectedBy: artifact.collectedBy,
+          contentHash: hash,
+          storageKey: key,
+        })
+      );
+    }
 
     // Create chain of custody entry
     await this.addCustodyEntry({
@@ -139,33 +157,68 @@ export class EnhancedEvidenceChain {
     };
 
     // Calculate hash
-    const hash = await this.calculateHash(new TextEncoder().encode(JSON.stringify(entryData)));
+    const entryBytes = new TextEncoder().encode(JSON.stringify(entryData));
+    const hash = await this.calculateHash(entryBytes.buffer);
 
-    // Store in D1
-    await this.d1
-      .prepare(
-        'INSERT INTO chain_of_custody (entry_id, evidence_id, action, actor, timestamp, hash, previous_hash, blockchain_tx_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-      )
-      .bind(
-        entryId,
-        entry.evidenceId,
-        entry.action,
-        entry.actor,
-        entry.timestamp,
-        hash,
-        previousHash || null,
-        null // Will be set if blockchain enabled
-      )
-      .run();
+    // Store in D1 (graceful fallback to KV if D1 unavailable)
+    try {
+      await this.d1
+        .prepare(
+          'INSERT INTO chain_of_custody (entry_id, evidence_id, action, actor, timestamp, hash, previous_hash, blockchain_tx_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+        )
+        .bind(
+          entryId,
+          entry.evidenceId,
+          entry.action,
+          entry.actor,
+          entry.timestamp,
+          hash,
+          previousHash || null,
+          null // Will be set if blockchain enabled
+        )
+        .run();
+    } catch (error) {
+      // D1 unavailable - use KV fallback
+      console.warn('D1 unavailable, using KV fallback for chain of custody:', error);
+      const kv = this.env.DEFENDER_FORGE;
+      await kv.put(
+        `custody:${entryId}`,
+        JSON.stringify({
+          entryId,
+          evidenceId: entry.evidenceId,
+          action: entry.action,
+          actor: entry.actor,
+          timestamp: entry.timestamp,
+          hash,
+          previousHash,
+          blockchainTxId: null,
+        })
+      );
+    }
 
     // Anchor to blockchain if enabled
     if (this.blockchainEnabled) {
-      const txId = await this.anchorToBlockchain(hash, entry.evidenceId);
-      if (txId) {
-        await this.d1
-          .prepare('UPDATE chain_of_custody SET blockchain_tx_id = ? WHERE entry_id = ?')
-          .bind(txId, entryId)
-          .run();
+      try {
+        const txId = await this.anchorToBlockchain(hash, entry.evidenceId);
+        if (txId) {
+          try {
+            await this.d1
+              .prepare('UPDATE chain_of_custody SET blockchain_tx_id = ? WHERE entry_id = ?')
+              .bind(txId, entryId)
+              .run();
+          } catch (error) {
+            // D1 unavailable - update KV instead
+            const kv = this.env.DEFENDER_FORGE;
+            const custodyData = await kv.get(`custody:${entryId}`);
+            if (custodyData) {
+              const parsed = JSON.parse(custodyData);
+              parsed.blockchainTxId = txId;
+              await kv.put(`custody:${entryId}`, JSON.stringify(parsed));
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('Blockchain anchoring failed (non-critical):', error);
       }
     }
 
