@@ -29,6 +29,15 @@ export default function AttackerDatabase() {
   const [selectedAttacker, setSelectedAttacker] = useState<Attacker | null>(null);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    fingerprint: '',
+    ipAddress: '',
+    phoneNumber: '',
+    userAgent: '',
+    threatScore: 0.5,
+    aliases: '',
+  });
 
   useEffect(() => {
     loadAttackers();
@@ -39,12 +48,13 @@ export default function AttackerDatabase() {
     setError(null);
 
     try {
-      const response = await apiClient.get<{ success: boolean; attackers: Attacker[] }>(
+      const response = await apiClient.get<{ success: boolean; attackers?: Attacker[] }>(
         '/admin/attackers'
       );
-      setAttackers(response.attackers);
+      setAttackers(response.attackers || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load attackers');
+      setAttackers([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
@@ -60,10 +70,10 @@ export default function AttackerDatabase() {
     setError(null);
 
     try {
-      const response = await apiClient.get<{ success: boolean; attackers: Attacker[] }>(
+      const response = await apiClient.get<{ success: boolean; attackers?: Attacker[] }>(
         `/admin/attackers/search?q=${encodeURIComponent(searchQuery)}`
       );
-      setAttackers(response.attackers);
+      setAttackers(response.attackers || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Search failed');
     } finally {
@@ -90,13 +100,21 @@ export default function AttackerDatabase() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h2 className="font-header text-3xl">Attacker Database</h2>
-        <button
-          onClick={() => setShowUploadDialog(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-true-black-accent hover:bg-true-black-accent-hover rounded text-white"
-        >
-          <PlusIcon className="w-5 h-5" />
-          Upload Research
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowCreateDialog(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-true-black-accent hover:bg-true-black-accent-hover rounded text-white"
+          >
+            <PlusIcon className="w-5 h-5" />
+            Add Attacker
+          </button>
+          <button
+            onClick={() => setShowUploadDialog(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-true-black-bg border border-true-black-border hover:bg-true-black-surface rounded text-true-black-text"
+          >
+            Upload Research
+          </button>
+        </div>
       </div>
 
       <div className="bg-true-black-surface border border-true-black-border rounded-lg p-6 mb-6">
@@ -194,6 +212,127 @@ export default function AttackerDatabase() {
           ))}
         </div>
       )}
+
+      {/* Create Attacker Dialog */}
+      <Dialog.Root open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
+          <Dialog.Content className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-true-black-surface border border-true-black-border rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto z-50">
+            <Dialog.Title className="font-header text-2xl mb-4">Create New Attacker</Dialog.Title>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setLoading(true);
+                setError(null);
+                try {
+                  const attackerData: Partial<Attacker> = {
+                    fingerprint: createForm.fingerprint || undefined,
+                    ipAddress: createForm.ipAddress || undefined,
+                    phoneNumber: createForm.phoneNumber || undefined,
+                    userAgent: createForm.userAgent || undefined,
+                    threatScore: createForm.threatScore,
+                    aliases: createForm.aliases ? createForm.aliases.split(',').map(a => a.trim()).filter(Boolean) : [],
+                  };
+                  await apiClient.post<{ success: boolean; attacker: Attacker }>(
+                    '/admin/attackers',
+                    attackerData
+                  );
+                  setShowCreateDialog(false);
+                  setCreateForm({ fingerprint: '', ipAddress: '', phoneNumber: '', userAgent: '', threatScore: 0.5, aliases: '' });
+                  loadAttackers();
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : 'Failed to create attacker');
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-sm font-medium mb-2">Fingerprint</label>
+                <input
+                  type="text"
+                  value={createForm.fingerprint}
+                  onChange={(e) => setCreateForm({ ...createForm, fingerprint: e.target.value })}
+                  placeholder="Device fingerprint (optional)"
+                  className="w-full px-4 py-2 bg-true-black-bg border border-true-black-border rounded text-true-black-text"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">IP Address</label>
+                <input
+                  type="text"
+                  value={createForm.ipAddress}
+                  onChange={(e) => setCreateForm({ ...createForm, ipAddress: e.target.value })}
+                  placeholder="IP address (optional)"
+                  className="w-full px-4 py-2 bg-true-black-bg border border-true-black-border rounded text-true-black-text"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Phone Number</label>
+                <input
+                  type="text"
+                  value={createForm.phoneNumber}
+                  onChange={(e) => setCreateForm({ ...createForm, phoneNumber: e.target.value })}
+                  placeholder="Phone number (optional)"
+                  className="w-full px-4 py-2 bg-true-black-bg border border-true-black-border rounded text-true-black-text"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">User Agent</label>
+                <input
+                  type="text"
+                  value={createForm.userAgent}
+                  onChange={(e) => setCreateForm({ ...createForm, userAgent: e.target.value })}
+                  placeholder="User agent (optional)"
+                  className="w-full px-4 py-2 bg-true-black-bg border border-true-black-border rounded text-true-black-text"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Threat Score (0-1)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="1"
+                  step="0.1"
+                  value={createForm.threatScore}
+                  onChange={(e) => setCreateForm({ ...createForm, threatScore: parseFloat(e.target.value) || 0.5 })}
+                  className="w-full px-4 py-2 bg-true-black-bg border border-true-black-border rounded text-true-black-text"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Aliases (comma-separated)</label>
+                <input
+                  type="text"
+                  value={createForm.aliases}
+                  onChange={(e) => setCreateForm({ ...createForm, aliases: e.target.value })}
+                  placeholder="alias1, alias2, alias3"
+                  className="w-full px-4 py-2 bg-true-black-bg border border-true-black-border rounded text-true-black-text"
+                />
+              </div>
+              <div className="flex gap-2 pt-4">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex-1 px-4 py-2 bg-true-black-accent hover:bg-true-black-accent-hover rounded text-white disabled:opacity-50"
+                >
+                  {loading ? 'Creating...' : 'Create Attacker'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateDialog(false)}
+                  className="px-4 py-2 bg-true-black-bg border border-true-black-border rounded text-true-black-text hover:bg-true-black-surface"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+            <Dialog.Close className="absolute top-4 right-4 text-true-black-text-muted hover:text-true-black-text">
+              ×
+            </Dialog.Close>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
 
       {/* Upload Dialog */}
       <Dialog.Root open={showUploadDialog} onOpenChange={setShowUploadDialog}>

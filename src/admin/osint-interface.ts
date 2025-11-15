@@ -104,7 +104,7 @@ export class OSINTInterface {
         identityGraph.domains = result.identityGraph.domainsOwned || [];
         identityGraph.alternates = [...(result.identityGraph.aliases || []), ...(identityGraph.alternates || [])];
         identityGraph.addresses = (result.identityGraph.locations || []).map((loc: { location: string }) => ({ address: loc.location }));
-        confidence = result.confidence;
+        confidence = result.confidence || 0.5;
         riskScore = result.riskIndicators ? 0.5 : 0.5; // Would calculate from risk indicators
       } else if (type === 'phone') {
         const result = await this.unmasker.unmaskIdentity({ phone: identifier });

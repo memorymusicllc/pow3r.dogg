@@ -234,6 +234,61 @@ export class AttackerDatabase {
   }
 
   /**
+   * Create new attacker profile
+   */
+  async createAttacker(data: Partial<AttackerProfile>): Promise<AttackerProfile> {
+    const id = data.id || crypto.randomUUID();
+    const now = Date.now();
+    
+    const attacker: AttackerProfile = {
+      id,
+      fingerprint: data.fingerprint,
+      ipAddress: data.ipAddress,
+      phoneNumber: data.phoneNumber,
+      userAgent: data.userAgent,
+      metadata: data.metadata || {},
+      firstSeen: data.firstSeen || now,
+      lastSeen: data.lastSeen || now,
+      threatScore: data.threatScore ?? 0.5,
+      aliases: data.aliases || [],
+      relatedAttackers: data.relatedAttackers || [],
+      evidenceIds: data.evidenceIds || [],
+      investigationIds: data.investigationIds || [],
+    };
+
+    try {
+      if (this.env.DEFENDER_DB) {
+        await this.env.DEFENDER_DB
+          .prepare(
+            'INSERT INTO attacker_profiles (id, fingerprint, ip_address, phone_number, user_agent, metadata, first_seen, last_seen, threat_score, aliases, related_attackers, evidence_ids, investigation_ids) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+          )
+          .bind(
+            attacker.id,
+            attacker.fingerprint,
+            attacker.ipAddress,
+            attacker.phoneNumber,
+            attacker.userAgent,
+            JSON.stringify(attacker.metadata),
+            attacker.firstSeen,
+            attacker.lastSeen,
+            attacker.threatScore,
+            JSON.stringify(attacker.aliases),
+            JSON.stringify(attacker.relatedAttackers),
+            JSON.stringify(attacker.evidenceIds),
+            JSON.stringify(attacker.investigationIds)
+          )
+          .run();
+      }
+    } catch (error) {
+      console.warn('D1 create failed, using KV fallback:', error);
+    }
+
+    // Store in KV
+    await this.env.DEFENDER_FORGE.put(`attacker:${id}`, JSON.stringify(attacker));
+    return attacker;
+  }
+
+  /**
    * Update attacker profile
    */
   async updateAttacker(id: string, updates: Partial<AttackerProfile>): Promise<AttackerProfile | null> {

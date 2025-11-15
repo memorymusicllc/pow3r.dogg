@@ -206,6 +206,21 @@ export async function handleAdmin(
         );
       }
     }
+
+    // POST /admin/attackers - Create new attacker
+    if (url.pathname === '/admin/attackers' && request.method === 'POST') {
+      try {
+        const body = await request.json() as Partial<AttackerProfile>;
+        const attacker = await attackerDb.createAttacker(body);
+        return jsonResponse({ success: true, attacker }, corsHeaders, 201);
+      } catch (error) {
+        return jsonResponse(
+          { error: 'Create failed', message: String(error) },
+          corsHeaders,
+          500
+        );
+      }
+    }
   }
 
   // Analytics endpoints
