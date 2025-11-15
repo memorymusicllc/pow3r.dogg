@@ -287,17 +287,31 @@ async function handleTelegram(
       const guardDog = new GuardDog(env);
       
       if (body.action === 'deploy') {
-        const state = await guardDog.deploy(body.chatId, body.userId, body.config);
+        const state = await guardDog.deploy(
+          body.chatId as string,
+          body.userId as string,
+          body.config as Record<string, unknown>
+        );
         return jsonResponse({ success: true, state }, corsHeaders);
       } else if (body.action === 'process') {
         const detection = await guardDog.processMessage(
-          body.chatId,
-          body.userId,
-          body.message
+          body.chatId as string,
+          body.userId as string,
+          body.message as {
+            text?: string;
+            messageId: string;
+            timestamp: number;
+            isSelfDestruct?: boolean;
+            isEdited?: boolean;
+            isDeleted?: boolean;
+          }
         );
         return jsonResponse({ success: true, detection }, corsHeaders);
       } else if (body.action === 'threatScore') {
-        const score = await guardDog.getThreatScore(body.chatId, body.userId);
+        const score = await guardDog.getThreatScore(
+          body.chatId as string,
+          body.userId as string
+        );
         return jsonResponse({ success: true, threatScore: score }, corsHeaders);
       }
       
@@ -331,7 +345,11 @@ async function handleTelegram(
         const response = await impersonationBot.generateResponse(
           body.chatId as string,
           body.attackerId as string,
-          body.message as Record<string, unknown>
+          body.message as {
+            text: string;
+            messageId: string;
+            timestamp: number;
+          }
         );
         return jsonResponse({ success: true, response }, corsHeaders);
       } else if (body.action === 'disable') {
@@ -408,9 +426,11 @@ async function handleEvidence(
         console.warn('D1 schema initialization failed (may be unavailable):', error);
       }
 
+      const contentBytes = new TextEncoder().encode((body.content as string) || '');
+      const contentBuffer = new Uint8Array(contentBytes).buffer;
       const evidenceId = await evidenceChain.storeEvidence({
         type: (body.type as string) || 'unknown',
-        content: new TextEncoder().encode((body.content as string) || ''),
+        content: contentBuffer,
         metadata: (body.metadata as Record<string, unknown>) || {},
         timestamp: (body.timestamp as string) || new Date().toISOString(),
         collectedBy: (body.collectedBy as string) || 'system',
@@ -587,8 +607,13 @@ async function handleAttribution(
       const analytics = new BehavioralAnalytics();
 
       // Process behavioral events from body
-      if (body.keystrokeEvents) {
-        for (const event of body.keystrokeEvents) {
+      const keystrokeEvents = body.keystrokeEvents as Array<{
+        key: string;
+        keyDown: number;
+        keyUp: number;
+      }> | undefined;
+      if (keystrokeEvents) {
+        for (const event of keystrokeEvents) {
           analytics.captureKeystroke(
             event.key,
             event.keyDown,

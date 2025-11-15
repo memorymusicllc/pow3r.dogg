@@ -90,7 +90,7 @@ export class XMAPSyncHandler {
           const event = await this.syncXMAP(
             data.xmapId,
             data.repoUrl,
-            'kv_polling'
+            'kv_poll'
           );
           events.push(event);
 

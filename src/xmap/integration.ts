@@ -67,8 +67,10 @@ export class XMAPClient {
       throw new Error(`XMAP initialization failed: ${response.statusText}`);
     }
 
-      const data = await response.json() as Record<string, unknown>;
-    return data.data;
+      const data = await response.json() as {
+      data?: { name: string; version: string; capabilities: unknown };
+    };
+    return data.data || { name: '', version: '', capabilities: {} };
   }
 
   /**
@@ -142,8 +144,13 @@ export class XMAPClient {
       throw new Error(`XMAP validation failed: ${response.statusText}`);
     }
 
-      const result = await response.json() as Record<string, unknown>;
-    return result.content[0].text as { valid: boolean; errors?: string[] };
+      const result = await response.json() as {
+        content?: Array<{ type: string; text: string }>;
+      };
+      if (result.content && result.content[0]) {
+        return JSON.parse(result.content[0].text) as { valid: boolean; errors?: string[] };
+      }
+      return { valid: false, errors: ['No content in response'] };
   }
 
   /**

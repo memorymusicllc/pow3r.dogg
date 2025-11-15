@@ -184,8 +184,16 @@ export class OSINTUnmasker {
       });
 
       if (response.ok) {
-        const data = await response.json() as Record<string, unknown>;
-        additionalEmails.push(...(data.alternate_emails || []));
+        const data = await response.json() as {
+          alternate_emails?: string[];
+          linkedin?: string | null;
+          twitter?: string | null;
+          facebook?: string | null;
+          first_seen?: string;
+        };
+        if (data.alternate_emails) {
+          additionalEmails.push(...data.alternate_emails);
+        }
         socialMedia.linkedin = data.linkedin || null;
         socialMedia.twitter = data.twitter || null;
         socialMedia.facebook = data.facebook || null;
@@ -212,8 +220,8 @@ export class OSINTUnmasker {
       });
 
       if (response.ok) {
-        const data = await response.json() as Record<string, unknown>;
-        breaches.push(...data.map((b: { Name: string }) => b.Name));
+        const data = await response.json() as Array<{ Name: string }>;
+        breaches.push(...data.map((b) => b.Name));
       }
     } catch (error) {
       console.error('HIBP API error:', error);
@@ -227,7 +235,9 @@ export class OSINTUnmasker {
       );
 
       if (response.ok) {
-        const data = await response.json() as Record<string, unknown>;
+        const data = await response.json() as {
+          data?: { domain?: string };
+        };
         if (data.data?.domain) {
           timeline.push({
             date: new Date().toISOString().split('T')[0],

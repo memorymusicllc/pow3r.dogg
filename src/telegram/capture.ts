@@ -81,9 +81,11 @@ export class MessageCapture {
 
     // Store as evidence
     try {
+      const contentBytes = new TextEncoder().encode(content);
+      const contentBuffer = new Uint8Array(contentBytes).buffer;
       const evidenceId = await this.evidenceChain.storeEvidence({
         type: 'telegram_self_destruct',
-        content: new TextEncoder().encode(content),
+        content: contentBuffer,
         metadata: {
           messageId,
           chatId,
@@ -153,7 +155,7 @@ export class MessageCapture {
     // In production, this would use Tesseract or similar OCR service
     // For now, decode the screenshot data as text
     try {
-      return new TextDecoder().decode(screenshotData.buffer);
+      return new TextDecoder().decode(screenshotData);
     } catch {
       return 'OCR extraction failed - text not available';
     }
