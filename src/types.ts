@@ -15,14 +15,16 @@ export interface Env {
   SHORTENER_DOMAIN?: string;
   CLAUDE_MCP_URL?: string;
   TELEGRAM_BOT_TOKEN?: string;
-  SPUR_API_KEY?: string;
-  IPQS_API_KEY?: string;
-  OSINT_INDUSTRIES_API_KEY?: string;
-  TRACERS_API_KEY?: string;
-  HUNTER_API_KEY?: string;
-  HIBP_API_KEY?: string;
-  NUMVERIFY_API_KEY?: string;
-  WHOIS_API_KEY?: string;
+  SPUR_API_KEY?: string; // DEPRECATED: Replaced with IP2Proxy LITE + VPN lists (Phase 2)
+  IPQS_API_KEY?: string; // DEPRECATED: Replaced with AbuseIPDB + FireHOL (Phase 2)
+  ABUSEIPDB_API_KEY?: string; // Optional: AbuseIPDB API key for higher rate limits (free tier works without it)
+  OSINT_INDUSTRIES_API_KEY?: string; // DEPRECATED: Replaced with SpiderFoot (Phase 3)
+  TRACERS_API_KEY?: string; // DEPRECATED: Replaced with SpiderFoot (Phase 3)
+  SPIDERFOOT_API_URL?: string; // SpiderFoot API URL (self-hosted, e.g., http://localhost:5001)
+  HUNTER_API_KEY?: string; // DEPRECATED: Replaced with EmailRep.io + MX validation (Phase 1)
+  HIBP_API_KEY?: string; // Still used for email breach checks (free tier)
+  NUMVERIFY_API_KEY?: string; // DEPRECATED: Replaced with libphonenumber-js (Phase 1)
+  WHOIS_API_KEY?: string; // DEPRECATED: Replaced with ICANN RDAP (Phase 1)
   ETHEREUM_RPC_URL?: string;
   GOOGLE_MAPS_API_KEY?: string;
   CLEARBIT_API_KEY?: string;

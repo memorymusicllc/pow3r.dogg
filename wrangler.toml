@@ -45,6 +45,17 @@ bucket_name = "evidence-vault"
 # dimensions = 768
 # metric = "cosine"
 
+# Cron Triggers for daily updates
+# NOTE: Cron triggers must be deployed as separate workers or added to main worker
+# See: scripts/deploy-cron-triggers.sh for deployment
+# 
+# To add to main worker, uncomment and configure:
+# [[env.production.triggers.crons]]
+# cron = "0 2 * * *"  # Daily at 2 AM UTC
+#
+# [[env.production.triggers.crons]]
+# cron = "0 3 * * *"  # Daily at 3 AM UTC
+
 # Environment Variables
 [env.production.vars]
 ABI_WEBHOOK_URL = "credential:abi_webhook_url"

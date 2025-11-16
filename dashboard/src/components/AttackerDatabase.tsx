@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react';
-import { apiClient } from '../api/client';
-import { Link } from 'react-router-dom';
+import { apiClient, mcpClient } from '../api/client';
+import { useConfigStore } from '../stores/config-store';
+import { getRenderingConfig } from '../utils/config-validator';
+import { emitComponentEvent } from '../utils/observability';
+import { Renderer2D, Renderer3D, RendererReactFlow } from './renderers';
 import { UserGroupIcon, MagnifyingGlassIcon, PlusIcon } from '@heroicons/react/24/outline';
 import FileUpload from './FileUpload';
 import * as Dialog from '@radix-ui/react-dialog';
+import type { Node, Edge } from 'reactflow';
 
 interface Attacker {
   id: string;
@@ -25,7 +29,11 @@ interface AttackerDatabaseProps {
   onAttackerSelect?: (attackerId: string) => void;
 }
 
+const COMPONENT_ID = 'attacker-database';
+
 export default function AttackerDatabase({ onAttackerSelect }: AttackerDatabaseProps = {}) {
+  const { renderingMode, getComponentConfig } = useConfigStore();
+  const componentConfig = getComponentConfig(COMPONENT_ID);
   const [attackers, setAttackers] = useState<Attacker[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,17 +57,25 @@ export default function AttackerDatabase({ onAttackerSelect }: AttackerDatabaseP
   }, []);
 
   const loadAttackers = async () => {
+    const startTime = Date.now();
     setLoading(true);
     setError(null);
 
     try {
+      emitComponentEvent(COMPONENT_ID, 'data_load_start', {});
       const response = await apiClient.get<{ success: boolean; attackers?: Attacker[] }>(
         '/admin/attackers'
       );
       setAttackers(response.attackers || []);
+      emitComponentEvent(COMPONENT_ID, 'data_load_complete', {
+        duration: Date.now() - startTime,
+        count: response.attackers?.length || 0,
+      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load attackers');
-      setAttackers([]); // Set empty array on error
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load attackers';
+      setError(errorMessage);
+      setAttackers([]);
+      emitComponentEvent(COMPONENT_ID, 'data_load_error', { error: errorMessage });
     } finally {
       setLoading(false);
     }
@@ -75,12 +91,63 @@ export default function AttackerDatabase({ onAttackerSelect }: AttackerDatabaseP
     setError(null);
 
     try {
-      const response = await apiClient.get<{ success: boolean; attackers?: Attacker[] }>(
-        `/admin/attackers/search?q=${encodeURIComponent(searchQuery)}`
-      );
-      setAttackers(response.attackers || []);
+      // Try MCP tool first for fingerprint/IP/phone queries
+      // Check if query looks like fingerprint (long hex), IP (IPv4/IPv6), or phone
+      const isFingerprint = /^[a-f0-9]{32,}$/i.test(searchQuery.trim());
+      const isIP = /^(\d{1,3}\.){3}\d{1,3}$|^([0-9a-f]{0,4}:){2,7}[0-9a-f]{0,4}$/i.test(searchQuery.trim());
+      const isPhone = /^\+?[\d\s\-\(\)]{10,}$/.test(searchQuery.trim());
+
+      if (isFingerprint || isIP || isPhone) {
+        // Use MCP tool for targeted queries
+        const mcpArgs: Record<string, string> = {};
+        if (isFingerprint) {
+          mcpArgs.fingerprint = searchQuery.trim();
+        } else if (isIP) {
+          mcpArgs.ip = searchQuery.trim();
+        } else if (isPhone) {
+          mcpArgs.phone = searchQuery.trim();
+        }
+
+        const mcpResult = await mcpClient.callTool<{ success: boolean; results: unknown[]; count: number }>(
+          'defender_query_attacker',
+          mcpArgs
+        );
+
+        if (mcpResult.success && mcpResult.data) {
+          // Transform MCP results to Attacker format
+          // MCP returns beacons, we need to convert them to attacker profiles
+          const results = mcpResult.data.results || [];
+          if (results.length > 0) {
+            // For now, use REST API to get full attacker profiles from the results
+            // This is a hybrid approach: MCP for discovery, REST for full data
+            const response = await apiClient.get<{ success: boolean; attackers?: Attacker[] }>(
+              `/admin/attackers/search?q=${encodeURIComponent(searchQuery)}`
+            );
+            setAttackers(response.attackers || []);
+          } else {
+            setAttackers([]);
+          }
+        } else {
+          // Fallback to REST API if MCP fails
+          throw new Error(mcpResult.error || 'MCP query failed');
+        }
+      } else {
+        // Use REST API for text-based searches
+        const response = await apiClient.get<{ success: boolean; attackers?: Attacker[] }>(
+          `/admin/attackers/search?q=${encodeURIComponent(searchQuery)}`
+        );
+        setAttackers(response.attackers || []);
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Search failed');
+      // If MCP fails, fallback to REST API
+      try {
+        const response = await apiClient.get<{ success: boolean; attackers?: Attacker[] }>(
+          `/admin/attackers/search?q=${encodeURIComponent(searchQuery)}`
+        );
+        setAttackers(response.attackers || []);
+      } catch (restErr) {
+        setError(restErr instanceof Error ? restErr.message : 'Search failed');
+      }
     } finally {
       setLoading(false);
     }
@@ -98,6 +165,7 @@ export default function AttackerDatabase({ onAttackerSelect }: AttackerDatabaseP
       metadata: attacker.metadata || {},
     });
     setShowDetailsDialog(true);
+    emitComponentEvent(COMPONENT_ID, 'attacker_selected', { attackerId: attacker.id });
     if (onAttackerSelect) {
       onAttackerSelect(attacker.id);
     }
@@ -118,11 +186,12 @@ export default function AttackerDatabase({ onAttackerSelect }: AttackerDatabaseP
     return 'text-green-400';
   };
 
-  return (
+  // 2D Rendering (default)
+  const render2D = () => (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="font-header text-3xl">Attacker Database</h2>
-        <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <h2 className="font-header text-2xl">Attacker Database</h2>
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => {
               setEditingAttacker({
@@ -137,36 +206,36 @@ export default function AttackerDatabase({ onAttackerSelect }: AttackerDatabaseP
               setSelectedAttacker(null);
               setShowCreateDialog(true);
             }}
-            className="flex items-center gap-2 px-4 py-2 bg-true-black-accent hover:bg-true-black-accent-hover rounded text-white"
+            className="flex items-center gap-2 px-4 py-2 bg-true-black-accent theme-light:bg-light-accent theme-glass:bg-glass-accent hover:opacity-90 rounded-lg text-white font-medium transition-all duration-200"
           >
             <PlusIcon className="w-5 h-5" />
-            Add Attacker
+            <span>Add Attacker</span>
           </button>
           <button
             onClick={() => setShowUploadDialog(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-true-black-bg border border-true-black-border hover:bg-true-black-surface rounded text-true-black-text"
+            className="flex items-center gap-2 px-4 py-2 bg-true-black-surface theme-light:bg-light-surface theme-glass:bg-glass-surface border border-true-black-border theme-light:border-light-border theme-glass:border-glass-border hover:bg-true-black-bg theme-light:hover:bg-light-bg theme-glass:hover:bg-glass-bg rounded-lg text-true-black-text theme-light:text-light-text theme-glass:text-glass-text font-medium transition-all duration-200"
           >
-            Upload Research
+            <span>Upload Research</span>
           </button>
         </div>
       </div>
 
-      <div className="bg-true-black-surface border border-true-black-border rounded-lg p-6 mb-6">
-        <div className="flex gap-4">
+      <div className="bg-true-black-surface theme-light:bg-light-surface theme-glass:bg-glass-surface border border-true-black-border theme-light:border-light-border theme-glass:border-glass-border rounded-xl p-4 mb-6 max-w-[520px] mx-auto w-full">
+        <div className="flex gap-3">
           <div className="flex-1 relative">
-            <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-true-black-text-muted" />
+            <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-true-black-text-muted theme-light:text-light-text-muted theme-glass:text-glass-text-muted" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
               placeholder="Search by fingerprint, IP, phone, or ID..."
-              className="w-full pl-10 pr-4 py-2 bg-true-black-bg border border-true-black-border rounded text-true-black-text"
+              className="w-full pl-10 pr-4 py-2.5 bg-true-black-bg theme-light:bg-light-bg theme-glass:bg-glass-bg border border-true-black-border theme-light:border-light-border theme-glass:border-glass-border rounded-lg text-true-black-text theme-light:text-light-text theme-glass:text-glass-text focus:outline-none focus:ring-2 focus:ring-true-black-accent theme-light:focus:ring-light-accent theme-glass:focus:ring-glass-accent"
             />
           </div>
           <button
             onClick={handleSearch}
-            className="px-6 py-2 bg-true-black-accent hover:bg-true-black-accent-hover rounded text-white"
+            className="px-6 py-2.5 bg-true-black-accent theme-light:bg-light-accent theme-glass:bg-glass-accent hover:opacity-90 rounded-lg text-white font-medium transition-all duration-200"
           >
             Search
           </button>
@@ -192,54 +261,65 @@ export default function AttackerDatabase({ onAttackerSelect }: AttackerDatabaseP
           <p className="text-true-black-text-muted">No attackers found</p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {attackers.map((attacker) => (
+        <div className="grid grid-cols-1 gap-4">
+          {attackers.map((attacker, index) => (
             <div
               key={attacker.id}
               onClick={() => handleAttackerClick(attacker)}
-              className="bg-true-black-surface border border-true-black-border rounded-lg p-6 hover:border-true-black-accent cursor-pointer transition-colors"
+              className="bg-true-black-surface theme-light:bg-light-surface theme-glass:bg-glass-surface border border-true-black-border theme-light:border-light-border theme-glass:border-glass-border rounded-xl p-6 hover:border-true-black-accent theme-light:hover:border-light-accent theme-glass:hover:border-glass-accent cursor-pointer transition-all duration-300 hover:shadow-lg hover:scale-[1.01] max-w-[520px] mx-auto w-full animate-fadeIn"
+              style={{ animationDelay: `${index * 50}ms` }}
             >
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <div className="flex items-center gap-4 mb-2">
-                    <h3 className="font-header text-xl">Attacker {attacker.id.substring(0, 8)}</h3>
-                    <span className={`text-lg font-bold ${getThreatColor(attacker.threatScore)}`}>
-                      Threat: {(attacker.threatScore * 100).toFixed(0)}%
+              <div className="flex justify-between items-start gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-3 mb-3">
+                    <h3 className="font-header text-xl text-true-black-text theme-light:text-light-text theme-glass:text-glass-text">
+                      Attacker {attacker.id.substring(0, 8)}
+                    </h3>
+                    <span className={`px-3 py-1 rounded-full text-sm font-bold border ${
+                      attacker.threatScore >= 0.8
+                        ? 'text-red-400 border-red-500/30 bg-red-500/10'
+                        : attacker.threatScore >= 0.5
+                        ? 'text-yellow-400 border-yellow-500/30 bg-yellow-500/10'
+                        : 'text-green-400 border-green-500/30 bg-green-500/10'
+                    }`}>
+                      {(attacker.threatScore * 100).toFixed(0)}%
                     </span>
                   </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                     {attacker.fingerprint && (
-                      <div>
-                        <div className="text-true-black-text-muted">Fingerprint</div>
-                        <div className="font-mono text-xs">{attacker.fingerprint.substring(0, 16)}...</div>
+                      <div className="bg-true-black-bg theme-light:bg-light-bg theme-glass:bg-glass-bg rounded-lg p-3">
+                        <div className="text-true-black-text-muted theme-light:text-light-text-muted theme-glass:text-glass-text-muted text-xs mb-1">Fingerprint</div>
+                        <div className="font-mono text-xs text-true-black-text theme-light:text-light-text theme-glass:text-glass-text truncate">{attacker.fingerprint.substring(0, 24)}...</div>
                       </div>
                     )}
                     {attacker.ipAddress && (
-                      <div>
-                        <div className="text-true-black-text-muted">IP Address</div>
-                        <div>{attacker.ipAddress}</div>
+                      <div className="bg-true-black-bg theme-light:bg-light-bg theme-glass:bg-glass-bg rounded-lg p-3">
+                        <div className="text-true-black-text-muted theme-light:text-light-text-muted theme-glass:text-glass-text-muted text-xs mb-1">IP Address</div>
+                        <div className="text-true-black-text theme-light:text-light-text theme-glass:text-glass-text">{attacker.ipAddress}</div>
                       </div>
                     )}
                     {attacker.phoneNumber && (
-                      <div>
-                        <div className="text-true-black-text-muted">Phone</div>
-                        <div>{attacker.phoneNumber}</div>
+                      <div className="bg-true-black-bg theme-light:bg-light-bg theme-glass:bg-glass-bg rounded-lg p-3">
+                        <div className="text-true-black-text-muted theme-light:text-light-text-muted theme-glass:text-glass-text-muted text-xs mb-1">Phone</div>
+                        <div className="text-true-black-text theme-light:text-light-text theme-glass:text-glass-text">{attacker.phoneNumber}</div>
                       </div>
                     )}
-                    <div>
-                      <div className="text-true-black-text-muted">Last Seen</div>
-                      <div>{formatDate(attacker.lastSeen)}</div>
+                    <div className="bg-true-black-bg theme-light:bg-light-bg theme-glass:bg-glass-bg rounded-lg p-3">
+                      <div className="text-true-black-text-muted theme-light:text-light-text-muted theme-glass:text-glass-text-muted text-xs mb-1">Last Seen</div>
+                      <div className="text-true-black-text theme-light:text-light-text theme-glass:text-glass-text text-xs">{formatDate(attacker.lastSeen)}</div>
                     </div>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <Link
-                    to={`/knowledge-graph/${attacker.id}`}
-                    onClick={(e) => e.stopPropagation()}
-                    className="px-4 py-2 bg-true-black-bg border border-true-black-border rounded text-true-black-text hover:bg-true-black-surface"
+                <div className="flex-shrink-0">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAttackerClick(attacker);
+                    }}
+                    className="px-4 py-2 bg-true-black-accent theme-light:bg-light-accent theme-glass:bg-glass-accent hover:opacity-90 rounded-lg text-white text-sm font-medium transition-all duration-200"
                   >
-                    View Graph
-                  </Link>
+                    View Details
+                  </button>
                 </div>
               </div>
             </div>
@@ -335,12 +415,15 @@ export default function AttackerDatabase({ onAttackerSelect }: AttackerDatabaseP
                   )}
 
                   <div className="flex gap-2 pt-4">
-                    <Link
-                      to={`/knowledge-graph/${selectedAttacker.id}`}
-                      className="px-4 py-2 bg-true-black-accent hover:bg-true-black-accent-hover rounded text-white"
+                    <button
+                      onClick={() => {
+                        setShowDetailsDialog(false);
+                        // Scroll to knowledge graph section - handled by parent
+                      }}
+                      className="px-4 py-2 bg-true-black-accent theme-light:bg-light-accent theme-glass:bg-glass-accent hover:opacity-90 rounded-lg text-white font-medium transition-all duration-200"
                     >
                       View Knowledge Graph
-                    </Link>
+                    </button>
                     <button
                       onClick={handleEdit}
                       className="px-4 py-2 bg-true-black-bg border border-true-black-border rounded text-true-black-text hover:bg-true-black-surface"
@@ -500,4 +583,92 @@ export default function AttackerDatabase({ onAttackerSelect }: AttackerDatabaseP
       </Dialog.Root>
     </div>
   );
+
+  // 3D Rendering
+  const render3D = () => {
+    if (attackers.length === 0) {
+      return (
+        <div className="bg-true-black-surface border border-true-black-border rounded-lg p-12 text-center">
+          <UserGroupIcon className="w-16 h-16 mx-auto mb-4 text-true-black-text-muted" />
+          <p className="text-true-black-text-muted">No attackers found</p>
+        </div>
+      );
+    }
+
+    return (
+      <Renderer3D className="h-[600px] rounded-xl overflow-hidden">
+        {attackers.slice(0, 10).map((attacker, index) => {
+          const angle = (index / attackers.length) * Math.PI * 2;
+          const radius = 3;
+          const x = Math.cos(angle) * radius;
+          const z = Math.sin(angle) * radius;
+          const height = attacker.threatScore * 2;
+          const color = attacker.threatScore >= 0.8 ? '#ef4444' : attacker.threatScore >= 0.5 ? '#f59e0b' : '#10b981';
+          return (
+            <group key={attacker.id} position={[x, 0, z]}>
+              <mesh position={[0, height / 2, 0]}>
+                <boxGeometry args={[0.5, height, 0.5]} />
+                <meshStandardMaterial color={color} />
+              </mesh>
+            </group>
+          );
+        })}
+      </Renderer3D>
+    );
+  };
+
+  // React Flow Rendering
+  const renderReactFlow = () => {
+    const nodes: Node[] = attackers.slice(0, 20).map((attacker, index) => ({
+      id: attacker.id,
+      type: 'default',
+      position: {
+        x: (index % 5) * 200,
+        y: Math.floor(index / 5) * 150,
+      },
+      data: {
+        label: `Attacker ${attacker.id.substring(0, 8)}\nThreat: ${(attacker.threatScore * 100).toFixed(0)}%`,
+      },
+      style: {
+        background: attacker.threatScore >= 0.8 ? '#ef4444' : attacker.threatScore >= 0.5 ? '#f59e0b' : '#10b981',
+        color: '#fff',
+        border: '1px solid #333',
+        borderRadius: '8px',
+        padding: '10px',
+      },
+    }));
+
+    const edges: Edge[] = attackers
+      .slice(0, 20)
+      .filter((a) => a.relatedAttackers && a.relatedAttackers.length > 0)
+      .flatMap((attacker) =>
+        attacker.relatedAttackers!.slice(0, 3).map((relatedId) => ({
+          id: `${attacker.id}-${relatedId}`,
+          source: attacker.id,
+          target: relatedId,
+          animated: true,
+        }))
+      );
+
+    return (
+      <RendererReactFlow
+        className="h-[600px] rounded-xl overflow-hidden"
+        nodes={nodes}
+        edges={edges}
+      />
+    );
+  };
+
+  // Render based on mode
+  const canRender3D = getRenderingConfig(componentConfig, '3d');
+  const canRenderFlow = getRenderingConfig(componentConfig, 'react_flow');
+
+  if (renderingMode === '3d' && canRender3D) {
+    return render3D();
+  }
+  if (renderingMode === 'react_flow' && canRenderFlow) {
+    return renderReactFlow();
+  }
+  // Default to 2D
+  return <Renderer2D>{render2D()}</Renderer2D>;
 }

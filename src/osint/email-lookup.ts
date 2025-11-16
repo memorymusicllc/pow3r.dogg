@@ -2,7 +2,7 @@
  * Enhanced Email Lookup
  * 
  * Dedicated email intelligence gathering:
- * - Email verification (Hunter.io, EmailRep.io)
+ * - Email verification (EmailRep.io, MX validation)
  * - Breach data (Have I Been Pwned)
  * - Google Account OSINT (Epieos)
  * - Domain associations
@@ -10,6 +10,7 @@
  */
 
 import type { Env } from '../types';
+import { OfflineBreachChecker } from './breach-checker';
 
 export interface EmailLookupResult {
   email: string;
@@ -51,9 +52,11 @@ export interface EmailLookupResult {
 
 export class EmailLookup {
   private env: Env;
+  private breachChecker: OfflineBreachChecker;
 
   constructor(env: Env) {
     this.env = env;
+    this.breachChecker = new OfflineBreachChecker(env);
   }
 
   async lookup(email: string): Promise<EmailLookupResult> {
@@ -75,50 +78,7 @@ export class EmailLookup {
       sources: [],
     };
 
-    // Hunter.io verification
-    try {
-      const hunterKey = this.env.HUNTER_API_KEY || 'credential:hunter_api_key';
-      const hunterResponse = await fetch(
-        `https://api.hunter.io/v2/email-verifier?email=${encodeURIComponent(email)}&api_key=${hunterKey}`
-      );
-
-      if (hunterResponse.ok) {
-        const data = await hunterResponse.json() as {
-          data?: {
-            result?: string;
-            score?: number;
-            disposable?: boolean;
-            free_provider?: boolean;
-            deliverable?: boolean;
-            domain?: string;
-            mx_records?: Array<{ host: string }>;
-          };
-        };
-
-        if (data.data) {
-          result.verification.valid = data.data.result === 'deliverable';
-          result.verification.deliverable = data.data.deliverable || false;
-          result.verification.disposable = data.data.disposable || false;
-          result.verification.freeProvider = data.data.free_provider || false;
-          result.verification.score = data.data.score || 0;
-
-          if (data.data.mx_records) {
-            result.domain.mxRecords = data.data.mx_records.map((r) => r.host);
-          }
-
-          result.sources.push('Hunter.io');
-          result.timeline.push({
-            date: new Date().toISOString().split('T')[0],
-            event: `Email verified via Hunter.io (score: ${data.data.score})`,
-            source: 'Hunter.io',
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Hunter.io lookup failed:', error);
-    }
-
-    // EmailRep.io
+    // EmailRep.io (primary verification - free, no API key required)
     try {
       const emailrepResponse = await fetch(
         `https://emailrep.io/${encodeURIComponent(email)}`
@@ -134,11 +94,22 @@ export class EmailLookup {
             malicious_activity?: boolean;
             credentials_leaked?: boolean;
             data_breach?: boolean;
+            disposable?: boolean;
+            free_provider?: boolean;
+            valid?: boolean;
           };
         };
 
+        // Set verification data from EmailRep.io
         if (data.reputation !== undefined) {
-          result.verification.score = (result.verification.score + data.reputation) / 2;
+          result.verification.score = data.reputation / 100; // Convert 0-100 to 0-1
+        }
+        
+        if (data.details) {
+          result.verification.valid = data.details.valid !== false;
+          result.verification.disposable = data.details.disposable || false;
+          result.verification.freeProvider = data.details.free_provider || false;
+          result.verification.deliverable = !data.details.blacklisted && !data.details.malicious_activity;
         }
 
         if (data.details?.credentials_leaked) {
@@ -150,45 +121,86 @@ export class EmailLookup {
         }
 
         result.sources.push('EmailRep.io');
+        result.timeline.push({
+          date: new Date().toISOString().split('T')[0],
+          event: `Email verified via EmailRep.io (reputation: ${data.reputation || 'N/A'})`,
+          source: 'EmailRep.io',
+        });
       }
     } catch (error) {
       console.error('EmailRep.io lookup failed:', error);
     }
 
-    // Have I Been Pwned
+    // MX Record Validation (built-in DNS lookup)
     try {
-      const hibpKey = this.env.HIBP_API_KEY || 'credential:hibp_api_key';
-      const hibpResponse = await fetch(
-        `https://haveibeenpwned.com/api/v3/breachedaccount/${encodeURIComponent(email)}`,
-        {
-          headers: {
-            'hibp-api-key': hibpKey,
-          },
+      const domain = email.split('@')[1];
+      if (domain) {
+        // Use Cloudflare's DNS-over-HTTPS or external DNS resolver
+        // For Cloudflare Workers, we can use a DNS API service
+        const dnsResponse = await fetch(
+          `https://cloudflare-dns.com/dns-query?name=${domain}&type=MX`,
+          {
+            headers: {
+              'Accept': 'application/dns-json',
+            },
+          }
+        );
+
+        if (dnsResponse.ok) {
+          const dnsData = await dnsResponse.json() as {
+            Answer?: Array<{
+              name: string;
+              type: number;
+              data: string;
+            }>;
+          };
+
+          if (dnsData.Answer && dnsData.Answer.length > 0) {
+            const mxRecords = dnsData.Answer
+              .filter((record) => record.type === 15) // MX record type
+              .map((record) => {
+                // Parse MX record format: "10 mail.example.com"
+                const parts = record.data.split(' ');
+                return parts.length > 1 ? parts[1] : record.data;
+              });
+
+            if (mxRecords.length > 0) {
+              result.domain.mxRecords = mxRecords;
+              result.verification.deliverable = true;
+              result.verification.valid = true;
+
+              result.timeline.push({
+                date: new Date().toISOString().split('T')[0],
+                event: `MX records found: ${mxRecords.join(', ')}`,
+                source: 'DNS Lookup',
+              });
+            } else {
+              // No MX records - domain likely invalid
+              result.verification.deliverable = false;
+              result.verification.valid = false;
+            }
+          }
         }
-      );
+      }
+    } catch (error) {
+      console.error('MX record lookup failed:', error);
+    }
 
-      if (hibpResponse.ok) {
-        const breaches = await hibpResponse.json() as Array<{
-          Name: string;
-          BreachDate: string;
-          Description?: string;
-        }>;
-
-        result.breaches.push(...breaches.map((b) => ({
-          name: b.Name,
-          date: b.BreachDate,
-          description: b.Description,
-        })));
-
+    // Have I Been Pwned (using offline breach checker)
+    try {
+      const breachResult = await this.breachChecker.checkEmail(email);
+      
+      if (breachResult.found && breachResult.breaches.length > 0) {
+        result.breaches.push(...breachResult.breaches);
         result.sources.push('Have I Been Pwned');
         result.timeline.push({
           date: new Date().toISOString().split('T')[0],
-          event: `Found in ${breaches.length} data breach(es)`,
+          event: `Found in ${breachResult.breaches.length} data breach(es)`,
           source: 'Have I Been Pwned',
         });
       }
     } catch (error) {
-      console.error('HIBP lookup failed:', error);
+      console.error('Breach check failed:', error);
     }
 
     // Epieos (Google Account OSINT) - if API available

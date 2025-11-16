@@ -21,7 +21,12 @@
     "guardian:law": "test -f laws/pow3r.v4.law.md || echo 'Law file not found'",
     "dashboard:dev": "cd dashboard && npm run dev",
     "dashboard:build": "cd dashboard && npm install && npm run build",
-    "dashboard:preview": "cd dashboard && npm run preview"
+    "dashboard:preview": "cd dashboard && npm run preview",
+    "test:pow3r-pass": "tsx scripts/test-pow3r-pass-connection.ts",
+    "deploy:e2e": "./scripts/deploy-e2e-tests.sh",
+    "test:e2e:all": "playwright test --project=chromium --reporter=html,list",
+    "test:e2e:migration": "playwright test tests/migration-e2e.spec.ts --project=chromium --reporter=html,list",
+    "test:e2e:dashboard": "playwright test tests/dashboard.spec.ts --project=chromium --reporter=html,list"
   },
   "keywords": [
     "fraud-detection",
@@ -38,7 +43,8 @@
     "@fingerprintjs/fingerprintjs": "^4.5.0",
     "hono": "^4.6.0",
     "@cloudflare/workers-types": "^4.20241106.0",
-    "marked": "^12.0.0"
+    "marked": "^12.0.0",
+    "libphonenumber-js": "^1.11.0"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",

@@ -2,7 +2,8 @@
  * IP Attribution with Advanced VPN/Proxy Detection
  * 
  * Enhanced IP tracking with:
- * - Spur.us VPN pierce detection
+ * - IP2Proxy LITE + VPN lists (replaces Spur.us)
+ * - AbuseIPDB + FireHOL blocklists (replaces IP Quality Score)
  * - DNS leak detection
  * - TLS fingerprinting (JA3/JA4)
  * - Clock skew analysis
@@ -10,6 +11,8 @@
  */
 
 import type { Env } from '../types';
+import { VPNDetector } from './vpn-detector';
+import { IPReputationScorer } from './ip-reputation';
 
 export interface IPAttribution {
   ipAddress: string;
@@ -41,9 +44,9 @@ export interface ASNInfo {
 export interface VPNDetection {
   detected: boolean;
   provider?: string;
-  method: 'spur' | 'database' | 'behavioral';
+  method: 'ip2proxy' | 'vpn-list' | 'abuseipdb' | 'behavioral' | 'database' | 'spur';
   confidence: number;
-  trueIP?: string; // If pierced via Spur.us
+  trueIP?: string; // If pierced via VPN detection
 }
 
 export interface DNSLeakResult {
@@ -68,11 +71,15 @@ export interface ClockSkew {
 
 export class IPAttributionEngine {
   private env: Env;
-  private spurApiKey: string;
+  private vpnDetector: VPNDetector;
+  private reputationScorer: IPReputationScorer;
+  private spurApiKey: string; // Kept for backward compatibility, deprecated
 
   constructor(env: Env) {
     this.env = env;
-    this.spurApiKey = env.SPUR_API_KEY || 'credential:spur_api_key';
+    this.vpnDetector = new VPNDetector(env);
+    this.reputationScorer = new IPReputationScorer(env);
+    this.spurApiKey = env.SPUR_API_KEY || 'credential:spur_api_key'; // Deprecated
   }
 
   /**
@@ -89,13 +96,17 @@ export class IPAttributionEngine {
       this.analyzeClockSkew(headers),
     ]);
 
-    // Calculate risk score
+    // Calculate risk score using new reputation scorer
+    const reputationScore = await this.reputationScorer.calculateFraudScore(ip, vpnDetection.detected);
+    
+    // Combine with existing risk score calculation
     const riskScore = this.calculateRiskScore({
       vpnDetection,
       asn,
       dnsLeak,
       tlsFingerprint,
       clockSkew,
+      reputationScore: reputationScore.score,
     });
 
     return {
@@ -177,10 +188,23 @@ export class IPAttributionEngine {
   }
 
   /**
-   * Detect VPN using Spur.us and other methods
+   * Detect VPN using IP2Proxy LITE + VPN lists (replaces Spur.us)
    */
   private async detectVPN(ip: string, headers: Record<string, string>): Promise<VPNDetection> {
-    // Try Spur.us VPN pierce first
+    // Use new VPN detector (IP2Proxy LITE + VPN lists)
+    const vpnResult = await this.vpnDetector.detectVPN(ip, headers);
+    
+    if (vpnResult.detected) {
+      return {
+        detected: true,
+        provider: vpnResult.provider,
+        method: vpnResult.method,
+        confidence: vpnResult.confidence,
+        trueIP: vpnResult.trueIP,
+      };
+    }
+
+    // Fallback to legacy Spur.us (deprecated, kept for backward compatibility)
     try {
       const spurResult = await this.spurVPNPierce(ip);
       if (spurResult.detected && spurResult.trueIP) {
@@ -193,28 +217,7 @@ export class IPAttributionEngine {
         };
       }
     } catch (error) {
-      console.error('Spur.us VPN pierce failed:', error);
-    }
-
-    // Fallback to database detection
-    const dbResult = await this.databaseVPNDetection(ip);
-    if (dbResult.detected) {
-      return {
-        detected: true,
-        provider: dbResult.provider,
-        method: 'database',
-        confidence: dbResult.confidence,
-      };
-    }
-
-    // Behavioral detection
-    const behavioralResult = this.behavioralVPNDetection(headers);
-    if (behavioralResult.detected) {
-      return {
-        detected: true,
-        method: 'behavioral',
-        confidence: behavioralResult.confidence,
-      };
+      // Spur.us is deprecated, ignore errors
     }
 
     return {
@@ -268,39 +271,42 @@ export class IPAttributionEngine {
   }
 
   /**
-   * Database-based VPN detection
+   * Database-based VPN detection (deprecated - now handled by VPNDetector)
+   * Kept for backward compatibility
    */
   private async databaseVPNDetection(ip: string): Promise<{
     detected: boolean;
     provider?: string;
     confidence: number;
   }> {
-    // Use IPQualityScore or similar service
+    // This method is deprecated - VPN detection is now handled by VPNDetector
+    // Fallback to legacy IPQS if still configured (deprecated)
     try {
       const apiKey = this.env.IPQS_API_KEY || 'credential:ipqs_api_key';
-      const response = await fetch(
-        `https://ipqualityscore.com/api/json/ip/${apiKey}/${ip}`
-      );
-      const data = await response.json() as {
-        vpn?: boolean;
-        proxy?: boolean;
-        provider?: string;
-        fraud_score?: number;
-      };
-
-      if (data.vpn || data.proxy) {
-        return {
-          detected: true,
-          provider: data.provider || 'Unknown',
-          confidence: data.fraud_score ? data.fraud_score / 100 : 0.8,
+      if (apiKey && apiKey !== 'credential:ipqs_api_key') {
+        const response = await fetch(
+          `https://ipqualityscore.com/api/json/ip/${apiKey}/${ip}`
+        );
+        const data = await response.json() as {
+          vpn?: boolean;
+          proxy?: boolean;
+          provider?: string;
+          fraud_score?: number;
         };
-      }
 
-      return { detected: false, confidence: 0.0 };
+        if (data.vpn || data.proxy) {
+          return {
+            detected: true,
+            provider: data.provider || 'Unknown',
+            confidence: data.fraud_score ? data.fraud_score / 100 : 0.8,
+          };
+        }
+      }
     } catch (error) {
-      console.error('VPN database check failed:', error);
-      return { detected: false, confidence: 0.0 };
+      // Ignore errors - IPQS is deprecated
     }
+
+    return { detected: false, confidence: 0.0 };
   }
 
   /**
@@ -459,6 +465,7 @@ export class IPAttributionEngine {
 
   /**
    * Calculate overall risk score
+   * Now incorporates AbuseIPDB + FireHOL reputation scoring
    */
   private calculateRiskScore(indicators: {
     vpnDetection: VPNDetection;
@@ -466,30 +473,36 @@ export class IPAttributionEngine {
     dnsLeak: DNSLeakResult;
     tlsFingerprint: TLSFingerprint;
     clockSkew: ClockSkew;
+    reputationScore?: number; // From AbuseIPDB + FireHOL
   }): number {
     let score = 0.0;
 
+    // Reputation score (AbuseIPDB + FireHOL) - primary indicator
+    if (indicators.reputationScore !== undefined) {
+      score += indicators.reputationScore * 0.4; // 40% weight
+    }
+
     // VPN detection
     if (indicators.vpnDetection.detected) {
-      score += 0.3 * indicators.vpnDetection.confidence;
+      score += 0.2 * indicators.vpnDetection.confidence; // Reduced from 0.3 to 0.2
     }
 
     // ASN reputation
-    score += 0.2 * indicators.asn.reputation;
+    score += 0.15 * indicators.asn.reputation; // Reduced from 0.2 to 0.15
 
     // DNS leak
     if (indicators.dnsLeak.leaked) {
-      score += 0.2;
+      score += 0.15; // Reduced from 0.2 to 0.15
     }
 
     // Bot framework detection
     if (indicators.tlsFingerprint.botFramework) {
-      score += 0.2;
+      score += 0.1; // Reduced from 0.2 to 0.1
     }
 
     // Clock skew
     if (indicators.clockSkew.detected) {
-      score += 0.1;
+      score += 0.05; // Reduced from 0.1 to 0.05
     }
 
     return Math.min(score, 1.0);

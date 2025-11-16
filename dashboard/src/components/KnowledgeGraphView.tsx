@@ -12,7 +12,12 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { apiClient } from '../api/client';
-import { CubeIcon } from '@heroicons/react/24/outline';
+import { useConfigStore } from '../stores/config-store';
+import { getRenderingConfig, getThemeConfig } from '../utils/config-validator';
+import { emitComponentEvent } from '../utils/observability';
+import { Renderer2D, Renderer3D, RendererThreeJS } from './renderers';
+import { CubeIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
+import { Sphere, Text } from '@react-three/drei';
 
 interface KnowledgeGraphData {
   entities: Array<{ type: string; name: string; properties: Record<string, unknown> }>;
@@ -22,15 +27,22 @@ interface KnowledgeGraphData {
 
 interface KnowledgeGraphViewProps {
   attackerId?: string | null;
+  compact?: boolean;
 }
 
-export default function KnowledgeGraphView({ attackerId }: KnowledgeGraphViewProps = {}) {
+const COMPONENT_ID = 'knowledge-graph';
+
+export default function KnowledgeGraphView({ attackerId, compact = false }: KnowledgeGraphViewProps = {}) {
+  const { renderingMode, getComponentConfig, theme } = useConfigStore();
+  const componentConfig = getComponentConfig(COMPONENT_ID);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<KnowledgeGraphData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+
+  const themeConfig = getThemeConfig(componentConfig, theme);
+  const chartColors = (themeConfig?.chart_colors as string[]) || ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'];
 
   const loadKnowledgeGraph = useCallback(async () => {
     if (!attackerId) {
@@ -38,16 +50,25 @@ export default function KnowledgeGraphView({ attackerId }: KnowledgeGraphViewPro
       return;
     }
 
+    const startTime = Date.now();
     setLoading(true);
     setError(null);
 
     try {
+      emitComponentEvent(COMPONENT_ID, 'data_load_start', { attackerId });
       const response = await apiClient.get<{ success: boolean; data: KnowledgeGraphData }>(
         `/admin/knowledge-graph/${attackerId}`
       );
       setData(response.data);
+      emitComponentEvent(COMPONENT_ID, 'data_load_complete', {
+        duration: Date.now() - startTime,
+        entities: response.data.entities.length,
+        relationships: response.data.relationships.length,
+      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load knowledge graph');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load knowledge graph';
+      setError(errorMessage);
+      emitComponentEvent(COMPONENT_ID, 'data_load_error', { error: errorMessage });
     } finally {
       setLoading(false);
     }
@@ -56,15 +77,19 @@ export default function KnowledgeGraphView({ attackerId }: KnowledgeGraphViewPro
   useEffect(() => {
     if (attackerId) {
       loadKnowledgeGraph();
+    } else {
+      setData(null);
+      setNodes([]);
+      setEdges([]);
     }
-  }, [attackerId, loadKnowledgeGraph]);
+  }, [attackerId, loadKnowledgeGraph, setNodes, setEdges]);
 
   useEffect(() => {
     if (data && data.entities.length > 0) {
       // Convert entities to nodes with better positioning
       const graphNodes: Node[] = data.entities.map((entity, index) => {
         const angle = (index / data.entities.length) * 2 * Math.PI;
-        const radius = 200;
+        const radius = compact ? 150 : 200;
         return {
           id: `entity-${index}`,
           type: 'default',
@@ -80,10 +105,12 @@ export default function KnowledgeGraphView({ attackerId }: KnowledgeGraphViewPro
           style: {
             background: getNodeColor(entity.type),
             color: '#fff',
-            border: '1px solid #333',
-            borderRadius: '8px',
-            padding: '10px',
+            border: '2px solid rgba(255, 255, 255, 0.2)',
+            borderRadius: '12px',
+            padding: '12px',
             minWidth: '120px',
+            fontWeight: '600',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
           },
         };
       });
@@ -102,6 +129,7 @@ export default function KnowledgeGraphView({ attackerId }: KnowledgeGraphViewPro
             label: rel.type,
             style: { stroke: '#3b82f6', strokeWidth: 2 },
             animated: true,
+            labelStyle: { fill: '#3b82f6', fontWeight: 600 },
           });
         }
       });
@@ -112,7 +140,7 @@ export default function KnowledgeGraphView({ attackerId }: KnowledgeGraphViewPro
       setNodes([]);
       setEdges([]);
     }
-  }, [data, setNodes, setEdges]);
+  }, [data, setNodes, setEdges, compact]);
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
@@ -120,13 +148,19 @@ export default function KnowledgeGraphView({ attackerId }: KnowledgeGraphViewPro
   );
 
   const getNodeColor = (type: string): string => {
+    const typeIndex = ['person', 'organization', 'location', 'email', 'phone', 'domain', 'attacker', 'device'].indexOf(type);
+    if (typeIndex >= 0 && typeIndex < chartColors.length) {
+      return chartColors[typeIndex];
+    }
     const colors: Record<string, string> = {
-      person: '#3b82f6',
-      organization: '#10b981',
-      location: '#f59e0b',
-      email: '#8b5cf6',
-      phone: '#ec4899',
-      domain: '#06b6d4',
+      person: chartColors[0] || '#3b82f6',
+      organization: chartColors[1] || '#10b981',
+      location: chartColors[2] || '#f59e0b',
+      email: chartColors[3] || '#8b5cf6',
+      phone: chartColors[4] || '#ec4899',
+      domain: chartColors[5] || '#06b6d4',
+      attacker: '#ef4444',
+      device: '#6b7280',
     };
     return colors[type] || '#6b7280';
   };
@@ -135,8 +169,8 @@ export default function KnowledgeGraphView({ attackerId }: KnowledgeGraphViewPro
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-true-black-accent mx-auto mb-4"></div>
-          <p className="text-true-black-text-muted">Loading knowledge graph...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-true-black-accent theme-light:border-light-accent theme-glass:border-glass-accent mx-auto mb-4"></div>
+          <p className="text-true-black-text-muted theme-light:text-light-text-muted theme-glass:text-glass-text-muted">Loading knowledge graph...</p>
         </div>
       </div>
     );
@@ -144,7 +178,7 @@ export default function KnowledgeGraphView({ attackerId }: KnowledgeGraphViewPro
 
   if (error) {
     return (
-      <div className="bg-red-900/20 border border-red-500 rounded-lg p-4 text-red-400">
+      <div className="bg-red-900/20 border border-red-500 rounded-xl p-4 text-red-400 animate-fadeIn">
         {error}
       </div>
     );
@@ -152,43 +186,24 @@ export default function KnowledgeGraphView({ attackerId }: KnowledgeGraphViewPro
 
   if (!attackerId) {
     return (
-      <div>
-        <h2 className="font-header text-3xl mb-6">Knowledge Graph</h2>
-        <p className="text-true-black-text-muted">Please select an attacker to view their knowledge graph.</p>
+      <div className="bg-true-black-surface theme-light:bg-light-surface theme-glass:bg-glass-surface border border-true-black-border theme-light:border-light-border theme-glass:border-glass-border rounded-xl p-12 text-center">
+        <CubeIcon className="w-16 h-16 mx-auto mb-4 text-true-black-text-muted theme-light:text-light-text-muted theme-glass:text-glass-text-muted" />
+        <p className="text-true-black-text-muted theme-light:text-light-text-muted theme-glass:text-glass-text-muted mb-2">
+          Select an attacker from the Attackers section to view their knowledge graph.
+        </p>
+        <div className="flex items-center justify-center gap-2 text-sm text-true-black-text-muted theme-light:text-light-text-muted theme-glass:text-glass-text-muted">
+          <InformationCircleIcon className="w-5 h-5" />
+          <span>The knowledge graph shows relationships between entities, evidence, and connections.</span>
+        </div>
       </div>
     );
   }
 
-  return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="font-header text-3xl">Knowledge Graph</h2>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setViewMode('2d')}
-            className={`px-4 py-2 rounded ${
-              viewMode === '2d'
-                ? 'bg-true-black-accent text-white'
-                : 'bg-true-black-surface border border-true-black-border text-true-black-text'
-            }`}
-          >
-            2D View
-          </button>
-          <button
-            onClick={() => setViewMode('3d')}
-            className={`px-4 py-2 rounded ${
-              viewMode === '3d'
-                ? 'bg-true-black-accent text-white'
-                : 'bg-true-black-surface border border-true-black-border text-true-black-text'
-            }`}
-          >
-            3D View
-          </button>
-        </div>
-      </div>
-
-      {viewMode === '2d' ? (
-        <div className="bg-true-black-surface border border-true-black-border rounded-lg" style={{ height: '600px' }}>
+  // 2D/React Flow Rendering (default)
+  const renderReactFlow = () => (
+    <div className="space-y-6">
+      <div className="bg-true-black-surface theme-light:bg-light-surface theme-glass:bg-glass-surface border border-true-black-border theme-light:border-light-border theme-glass:border-glass-border rounded-xl overflow-hidden" style={{ height: compact ? '400px' : '600px' }}>
+        {nodes.length > 0 ? (
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -196,47 +211,151 @@ export default function KnowledgeGraphView({ attackerId }: KnowledgeGraphViewPro
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
             fitView
+            className="bg-true-black-bg theme-light:bg-light-bg theme-glass:bg-glass-bg"
           >
-            <Background />
-            <Controls />
-            <MiniMap />
+            <Background color="#1a1a1a" gap={16} />
+            <Controls className="bg-true-black-surface theme-light:bg-light-surface theme-glass:bg-glass-surface border border-true-black-border theme-light:border-light-border theme-glass:border-glass-border rounded-lg" />
+            <MiniMap 
+              className="bg-true-black-surface theme-light:bg-light-surface theme-glass:bg-glass-surface border border-true-black-border theme-light:border-light-border theme-glass:border-glass-border rounded-lg"
+              nodeColor={(node) => getNodeColor(node.data?.type || 'default')}
+              maskColor="rgba(0, 0, 0, 0.5)"
+            />
           </ReactFlow>
-        </div>
-      ) : (
-        <div className="bg-true-black-surface border border-true-black-border rounded-lg p-6" style={{ height: '600px' }}>
-          <Graph3D nodes={nodes} edges={edges} />
-        </div>
-      )}
+        ) : (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <CubeIcon className="w-16 h-16 mx-auto mb-4 text-true-black-text-muted theme-light:text-light-text-muted theme-glass:text-glass-text-muted" />
+              <p className="text-true-black-text-muted theme-light:text-light-text-muted theme-glass:text-glass-text-muted">
+                No graph data available for this attacker
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
 
       {data && (
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-true-black-surface border border-true-black-border rounded-lg p-4">
-            <div className="text-sm text-true-black-text-muted">Entities</div>
-            <div className="text-2xl font-bold">{data.entities.length}</div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-true-black-surface theme-light:bg-light-surface theme-glass:bg-glass-surface border border-true-black-border theme-light:border-light-border theme-glass:border-glass-border rounded-xl p-6 text-center hover:border-true-black-accent theme-light:hover:border-light-accent theme-glass:hover:border-glass-accent transition-all duration-300">
+            <div className="text-sm text-true-black-text-muted theme-light:text-light-text-muted theme-glass:text-glass-text-muted mb-2">Entities</div>
+            <div className="text-3xl font-bold text-true-black-text theme-light:text-light-text theme-glass:text-glass-text">{data.entities.length}</div>
           </div>
-          <div className="bg-true-black-surface border border-true-black-border rounded-lg p-4">
-            <div className="text-sm text-true-black-text-muted">Relationships</div>
-            <div className="text-2xl font-bold">{data.relationships.length}</div>
+          <div className="bg-true-black-surface theme-light:bg-light-surface theme-glass:bg-glass-surface border border-true-black-border theme-light:border-light-border theme-glass:border-glass-border rounded-xl p-6 text-center hover:border-true-black-accent theme-light:hover:border-light-accent theme-glass:hover:border-glass-accent transition-all duration-300">
+            <div className="text-sm text-true-black-text-muted theme-light:text-light-text-muted theme-glass:text-glass-text-muted mb-2">Relationships</div>
+            <div className="text-3xl font-bold text-true-black-text theme-light:text-light-text theme-glass:text-glass-text">{data.relationships.length}</div>
           </div>
-          <div className="bg-true-black-surface border border-true-black-border rounded-lg p-4">
-            <div className="text-sm text-true-black-text-muted">Facts</div>
-            <div className="text-2xl font-bold">{data.facts.length}</div>
+          <div className="bg-true-black-surface theme-light:bg-light-surface theme-glass:bg-glass-surface border border-true-black-border theme-light:border-light-border theme-glass:border-glass-border rounded-xl p-6 text-center hover:border-true-black-accent theme-light:hover:border-light-accent theme-glass:hover:border-glass-accent transition-all duration-300">
+            <div className="text-sm text-true-black-text-muted theme-light:text-light-text-muted theme-glass:text-glass-text-muted mb-2">Facts</div>
+            <div className="text-3xl font-bold text-true-black-text theme-light:text-light-text theme-glass:text-glass-text">{data.facts.length}</div>
           </div>
         </div>
       )}
     </div>
   );
-}
 
-// 3D Graph Component using ThreeJS
-function Graph3D(_props: { nodes: Node[]; edges: Edge[] }) {
-  return (
-    <div className="flex items-center justify-center h-full text-true-black-text-muted">
-      <div className="text-center">
-        <CubeIcon className="w-16 h-16 mx-auto mb-4 opacity-50" />
-        <p>3D visualization coming soon</p>
-        <p className="text-sm mt-2">ThreeJS integration in progress</p>
-      </div>
-    </div>
-  );
+  // 3D Rendering
+  const render3D = () => {
+    if (!data || data.entities.length === 0) {
+      return (
+        <div className="flex items-center justify-center h-96">
+          <div className="text-center">
+            <CubeIcon className="w-16 h-16 mx-auto mb-4 text-true-black-text-muted theme-light:text-light-text-muted theme-glass:text-glass-text-muted" />
+            <p className="text-true-black-text-muted theme-light:text-light-text-muted theme-glass:text-glass-text-muted">
+              No graph data available
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <Renderer3D className="h-[600px] rounded-xl overflow-hidden">
+        {data.entities.map((entity, index) => {
+          const angle = (index / data.entities.length) * Math.PI * 2;
+          const radius = 3;
+          const x = Math.cos(angle) * radius;
+          const z = Math.sin(angle) * radius;
+          const color = getNodeColor(entity.type);
+          return (
+            <group key={index} position={[x, 0, z]}>
+              <Sphere args={[0.3, 32, 32]}>
+                <meshStandardMaterial color={color} />
+              </Sphere>
+              <Text
+                position={[0, 0.5, 0]}
+                fontSize={0.2}
+                color="white"
+                anchorX="center"
+                anchorY="middle"
+              >
+                {entity.name}
+              </Text>
+            </group>
+          );
+        })}
+      </Renderer3D>
+    );
+  };
+
+  // ThreeJS Rendering
+  const renderThreeJS = () => {
+    if (!data || data.entities.length === 0) {
+      return (
+        <div className="flex items-center justify-center h-96">
+          <div className="text-center">
+            <CubeIcon className="w-16 h-16 mx-auto mb-4 text-true-black-text-muted theme-light:text-light-text-muted theme-glass:text-glass-text-muted" />
+            <p className="text-true-black-text-muted theme-light:text-light-text-muted theme-glass:text-glass-text-muted">
+              No graph data available
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <RendererThreeJS className="h-[600px] rounded-xl overflow-hidden" environment="night">
+        {data.entities.map((entity, index) => {
+          const angle = (index / data.entities.length) * Math.PI * 2;
+          const radius = 4;
+          const x = Math.cos(angle) * radius;
+          const z = Math.sin(angle) * radius;
+          const y = Math.sin(index * 0.5) * 1;
+          const color = getNodeColor(entity.type);
+          return (
+            <group key={index} position={[x, y, z]}>
+              <Sphere args={[0.4, 32, 32]}>
+                <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.5} />
+              </Sphere>
+              <Text
+                position={[0, 0.7, 0]}
+                fontSize={0.25}
+                color="white"
+                anchorX="center"
+                anchorY="middle"
+              >
+                {entity.name}
+              </Text>
+            </group>
+          );
+        })}
+      </RendererThreeJS>
+    );
+  };
+
+  // Render based on mode
+  const canRender3D = getRenderingConfig(componentConfig, '3d');
+  const canRenderFlow = getRenderingConfig(componentConfig, 'react_flow');
+  const canRenderThreeJS = getRenderingConfig(componentConfig, 'threejs');
+
+  if (renderingMode === '3d' && canRender3D) {
+    return render3D();
+  }
+  if (renderingMode === 'threejs' && canRenderThreeJS) {
+    return renderThreeJS();
+  }
+  // Default to React Flow (2D canvas)
+  if (renderingMode === 'react_flow' && canRenderFlow) {
+    return <Renderer2D>{renderReactFlow()}</Renderer2D>;
+  }
+  // Fallback to 2D
+  return <Renderer2D>{renderReactFlow()}</Renderer2D>;
 }

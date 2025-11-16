@@ -3,6 +3,9 @@
  * 
  * Provides auth tokens for Playwright tests
  * Tests MUST use auth, otherwise they will fail
+ * 
+ * Note: Pow3r Pass itself is open access (no auth required), but this worker
+ * requires authentication. This helper gets tokens for authenticating with the worker.
  */
 
 const PROD_URL = 'https://pow3r-defender-production.contact-7d8.workers.dev';
@@ -26,22 +29,46 @@ export async function getAuthToken(): Promise<string> {
   }
 
   // Priority 2: Pow3r Pass API
+  // Note: Pow3r Pass /token endpoint doesn't exist (404) - Pow3r Pass uses open access
+  // This is for future use if Pow3r Pass adds token-based auth
   try {
-    const response = await fetch(`${POW3R_PASS_URL}/token`, {
+    // Try health check first to verify connection
+    const healthResponse = await fetch(`${POW3R_PASS_URL}/health`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
+        // No Authorization header - Pow3r Pass is open access
       },
     });
 
-    if (response.ok) {
-      const data = await response.json() as { success: boolean; data?: { token: string } };
-      if (data.success && data.data?.token && data.data.token.length >= 32) {
-        return data.data.token;
+    if (healthResponse.ok) {
+      // Health check passed, try to get token (endpoint doesn't exist, but we try anyway)
+      const tokenResponse = await fetch(`${POW3R_PASS_URL}/token`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          // No Authorization header - Pow3r Pass is open access
+        },
+      });
+
+      if (tokenResponse.ok) {
+        const data = await tokenResponse.json() as { success: boolean; data?: { token: string } };
+        if (data.success && data.data?.token && data.data.token.length >= 32) {
+          console.log('✅ Pow3r Pass token retrieved successfully');
+          return data.data.token;
+        }
+      } else if (tokenResponse.status === 404) {
+        // Token endpoint not available, but Pow3r Pass is connected
+        // Use credentials endpoint as alternative or fall through to other methods
+        console.log('ℹ️  Pow3r Pass connected (token endpoint not available, using fallbacks)');
+      } else {
+        console.warn(`⚠️  Pow3r Pass token endpoint returned ${tokenResponse.status}`);
       }
+    } else {
+      console.warn(`⚠️  Pow3r Pass health check returned ${healthResponse.status}`);
     }
   } catch (error) {
-    console.warn('Pow3r Pass API unavailable, trying fallbacks:', error);
+    console.warn('⚠️  Pow3r Pass API unavailable, trying fallbacks:', error instanceof Error ? error.message : String(error));
   }
 
   // Priority 3: Cloudflare KV stored keys
@@ -94,12 +121,11 @@ export async function getAuthToken(): Promise<string> {
 }
 
 /**
- * Create authenticated request headers
+ * Create authenticated request headers (synchronous version for tests)
  */
-export async function getAuthHeaders(): Promise<Record<string, string>> {
-  const token = await getAuthToken();
+export function getAuthHeaders(token?: string): Record<string, string> {
   return {
-    'Authorization': `Bearer ${token}`,
+    'Authorization': `Bearer ${token || 'test-token'}`,
     'Content-Type': 'application/json',
   };
 }

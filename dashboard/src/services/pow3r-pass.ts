@@ -2,6 +2,12 @@
  * Pow3r Pass Service
  * 
  * Fetches authentication tokens and credentials from Pow3r Pass API
+ * 
+ * Security Model: Pow3r Pass uses open access with server-side security controls.
+ * No client-side authentication required - requests work without Authorization headers.
+ * Security is enforced server-side through CORS, rate limiting, IP allowlists, and audit logging.
+ * 
+ * See: docs/POW3R_PASS_SECURITY_MODEL.md
  */
 
 const POW3R_PASS_BASE = 'https://config.superbots.link/pass';
@@ -41,11 +47,14 @@ export class Pow3rPassService {
     }
 
     // Priority 1: Try Pow3r Pass API
+    // Note: /token endpoint doesn't exist (returns 404) - Pow3r Pass uses open access model
+    // This is intentional - security is enforced server-side, not client-side
     try {
       const response = await fetch(`${POW3R_PASS_BASE}/token`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          // No Authorization header needed - Pow3r Pass is open access
         },
       });
 
@@ -135,6 +144,8 @@ export class Pow3rPassService {
 
   /**
    * Validate token with Pow3r Pass API
+   * Note: This is for future use if Pow3r Pass adds authentication.
+   * Currently, Pow3r Pass uses open access - no validation needed.
    */
   async validateToken(token: string): Promise<boolean> {
     try {
@@ -142,6 +153,7 @@ export class Pow3rPassService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          // No Authorization header needed - Pow3r Pass is open access
         },
         body: JSON.stringify({ token }),
       });

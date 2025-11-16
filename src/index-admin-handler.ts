@@ -6,7 +6,7 @@
 
 import type { Env } from './types';
 import { Pow3rPassAuth } from './auth/pow3r-pass';
-import { AttackerDatabase } from './admin/attacker-db';
+import { AttackerDatabase, type AttackerProfile } from './admin/attacker-db';
 import { AnalyticsEngine } from './admin/analytics';
 import { OSINTInterface } from './admin/osint-interface';
 import { EvidenceTimeline } from './admin/evidence-timeline';

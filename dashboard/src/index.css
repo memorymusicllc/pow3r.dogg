@@ -12,6 +12,7 @@
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-header;
+    font-family: 'Rock Salt', cursive;
   }
 }
 
@@ -51,6 +52,58 @@
     @media (prefers-color-scheme: light) {
       color: var(--light-text);
     }
+  }
+}
+
+@layer components {
+  /* Animations */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fadeIn {
+    animation: fadeIn 0.3s ease-out forwards;
+  }
+
+  /* Smooth transitions */
+  * {
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+  }
+
+  /* Card hover effects */
+  .card-hover {
+    @apply transition-all duration-300;
+  }
+
+  .card-hover:hover {
+    @apply shadow-lg scale-[1.02];
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-true-black-bg;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-true-black-border rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-true-black-accent;
   }
 }
 

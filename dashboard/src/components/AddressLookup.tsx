@@ -59,8 +59,8 @@ export default function AddressLookup() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="bg-true-black-surface border border-true-black-border rounded-lg p-6">
+    <div className="space-y-6 max-w-[520px] mx-auto w-full">
+      <div className="bg-true-black-surface theme-light:bg-light-surface theme-glass:bg-glass-surface border border-true-black-border theme-light:border-light-border theme-glass:border-glass-border rounded-xl p-6 hover:border-true-black-accent theme-light:hover:border-light-accent theme-glass:hover:border-glass-accent transition-all duration-300">
         <div className="flex gap-4">
           <div className="flex-1">
             <label className="block text-sm font-medium mb-2">Address</label>
@@ -69,7 +69,7 @@ export default function AddressLookup() {
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               placeholder="123 Main St, City, State, ZIP"
-              className="w-full px-4 py-2 bg-true-black-bg border border-true-black-border rounded text-true-black-text"
+              className="w-full px-4 py-2.5 bg-true-black-bg theme-light:bg-light-bg theme-glass:bg-glass-bg border border-true-black-border theme-light:border-light-border theme-glass:border-glass-border rounded-lg text-true-black-text theme-light:text-light-text theme-glass:text-glass-text focus:outline-none focus:ring-2 focus:ring-true-black-accent theme-light:focus:ring-light-accent theme-glass:focus:ring-glass-accent transition-all duration-200"
               onKeyPress={(e) => e.key === 'Enter' && handleLookup()}
             />
           </div>
@@ -77,7 +77,7 @@ export default function AddressLookup() {
             <button
               onClick={handleLookup}
               disabled={loading}
-              className="px-6 py-2 bg-true-black-accent hover:bg-true-black-accent-hover rounded text-white disabled:opacity-50"
+              className="px-6 py-2.5 bg-true-black-accent theme-light:bg-light-accent theme-glass:bg-glass-accent hover:opacity-90 rounded-lg text-white font-medium disabled:opacity-50 transition-all duration-200"
             >
               {loading ? 'Looking up...' : 'Lookup'}
             </button>
@@ -93,7 +93,7 @@ export default function AddressLookup() {
 
       {result && (
         <div className="space-y-4">
-          <div className="bg-true-black-surface border border-true-black-border rounded-lg p-6">
+          <div className="bg-true-black-surface theme-light:bg-light-surface theme-glass:bg-glass-surface border border-true-black-border theme-light:border-light-border theme-glass:border-glass-border rounded-xl p-6 animate-fadeIn">
             <h3 className="font-header text-xl mb-4">Validation & Geocoding</h3>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div>
@@ -122,7 +122,7 @@ export default function AddressLookup() {
           </div>
 
           {result.propertyRecords && (
-            <div className="bg-true-black-surface border border-true-black-border rounded-lg p-6">
+            <div className="bg-true-black-surface theme-light:bg-light-surface theme-glass:bg-glass-surface border border-true-black-border theme-light:border-light-border theme-glass:border-glass-border rounded-xl p-6 animate-fadeIn">
               <h3 className="font-header text-xl mb-4">Property Records</h3>
               <div className="grid grid-cols-2 gap-4">
                 {result.propertyRecords.owner && (
@@ -154,7 +154,7 @@ export default function AddressLookup() {
           )}
 
           {result.associatedIdentities.length > 0 && (
-            <div className="bg-true-black-surface border border-true-black-border rounded-lg p-6">
+            <div className="bg-true-black-surface theme-light:bg-light-surface theme-glass:bg-glass-surface border border-true-black-border theme-light:border-light-border theme-glass:border-glass-border rounded-xl p-6 animate-fadeIn">
               <h3 className="font-header text-xl mb-4">Associated Identities ({result.associatedIdentities.length})</h3>
               <div className="space-y-2">
                 {result.associatedIdentities.map((identity, i) => (
@@ -171,7 +171,7 @@ export default function AddressLookup() {
             </div>
           )}
 
-          <div className="bg-true-black-surface border border-true-black-border rounded-lg p-6">
+          <div className="bg-true-black-surface theme-light:bg-light-surface theme-glass:bg-glass-surface border border-true-black-border theme-light:border-light-border theme-glass:border-glass-border rounded-xl p-6 animate-fadeIn">
             <h3 className="font-header text-xl mb-4">Sources</h3>
             <div className="flex flex-wrap gap-2">
               {result.sources.map((source, i) => (

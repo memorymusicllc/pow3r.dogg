@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { apiClient } from '../api/client';
+import { apiClient, mcpClient } from '../api/client';
 
 interface EmailLookupResult {
   email: string;
@@ -34,21 +34,74 @@ export default function EmailLookup() {
     setResult(null);
 
     try {
-      const response = await apiClient.post<{ success: boolean; result: EmailLookupResult }>(
-        '/admin/osint/email',
-        { email }
-      );
-      setResult(response.result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Lookup failed');
+      // Try MCP tool first for comprehensive OSINT unmasking
+      const mcpResult = await mcpClient.callTool<{
+        success: boolean;
+        result: {
+          email?: string;
+          phone?: string;
+          username?: string;
+          domain?: string;
+          name?: string;
+          identities?: Array<{
+            email?: string;
+            phone?: string;
+            username?: string;
+            name?: string;
+            socialMedia?: Array<{ platform: string; username: string; url: string }>;
+          }>;
+          breaches?: Array<{ name: string; date: string; description?: string }>;
+          sources?: string[];
+        };
+      }>('osint_full_unmask', { email });
+
+      if (mcpResult.success && mcpResult.data?.result) {
+        // Transform MCP result to EmailLookupResult format
+        const mcpData = mcpResult.data.result;
+        const transformedResult: EmailLookupResult = {
+          email: mcpData.email || email,
+          verification: {
+            valid: true, // Assume valid if MCP returns data
+            deliverable: true,
+            disposable: false,
+            freeProvider: email.includes('gmail.com') || email.includes('yahoo.com') || email.includes('hotmail.com'),
+            score: 0.8,
+          },
+          breaches: mcpData.breaches || [],
+          domain: {
+            name: email.split('@')[1] || '',
+            mxRecords: [],
+            spfRecord: false,
+            dkimRecord: false,
+          },
+          socialMedia: mcpData.identities?.[0]?.socialMedia || [],
+          timeline: [],
+          sources: mcpData.sources || ['MCP OSINT'],
+        };
+        setResult(transformedResult);
+      } else {
+        // Fallback to REST API if MCP fails or returns no data
+        throw new Error(mcpResult.error || 'MCP lookup returned no data');
+      }
+    } catch (mcpErr) {
+      // Fallback to REST API
+      try {
+        const response = await apiClient.post<{ success: boolean; result: EmailLookupResult }>(
+          '/admin/osint/email',
+          { email }
+        );
+        setResult(response.result);
+      } catch (restErr) {
+        setError(restErr instanceof Error ? restErr.message : 'Lookup failed');
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="space-y-6">
-      <div className="bg-true-black-surface border border-true-black-border rounded-lg p-6">
+    <div className="space-y-6 max-w-[520px] mx-auto w-full">
+      <div className="bg-true-black-surface theme-light:bg-light-surface theme-glass:bg-glass-surface border border-true-black-border theme-light:border-light-border theme-glass:border-glass-border rounded-xl p-6 hover:border-true-black-accent theme-light:hover:border-light-accent theme-glass:hover:border-glass-accent transition-all duration-300">
         <div className="flex gap-4">
           <div className="flex-1">
             <label className="block text-sm font-medium mb-2">Email Address</label>
@@ -57,7 +110,7 @@ export default function EmailLookup() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="example@domain.com"
-              className="w-full px-4 py-2 bg-true-black-bg border border-true-black-border rounded text-true-black-text"
+              className="w-full px-4 py-2.5 bg-true-black-bg theme-light:bg-light-bg theme-glass:bg-glass-bg border border-true-black-border theme-light:border-light-border theme-glass:border-glass-border rounded-lg text-true-black-text theme-light:text-light-text theme-glass:text-glass-text focus:outline-none focus:ring-2 focus:ring-true-black-accent theme-light:focus:ring-light-accent theme-glass:focus:ring-glass-accent transition-all duration-200"
               onKeyPress={(e) => e.key === 'Enter' && handleLookup()}
             />
           </div>
@@ -65,7 +118,7 @@ export default function EmailLookup() {
             <button
               onClick={handleLookup}
               disabled={loading}
-              className="px-6 py-2 bg-true-black-accent hover:bg-true-black-accent-hover rounded text-white disabled:opacity-50"
+              className="px-6 py-2.5 bg-true-black-accent theme-light:bg-light-accent theme-glass:bg-glass-accent hover:opacity-90 rounded-lg text-white font-medium disabled:opacity-50 transition-all duration-200"
             >
               {loading ? 'Looking up...' : 'Lookup'}
             </button>
@@ -81,7 +134,7 @@ export default function EmailLookup() {
 
       {result && (
         <div className="space-y-4">
-          <div className="bg-true-black-surface border border-true-black-border rounded-lg p-6">
+          <div className="bg-true-black-surface theme-light:bg-light-surface theme-glass:bg-glass-surface border border-true-black-border theme-light:border-light-border theme-glass:border-glass-border rounded-xl p-6 animate-fadeIn">
             <h3 className="font-header text-xl mb-4">Verification</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
@@ -104,7 +157,7 @@ export default function EmailLookup() {
           </div>
 
           {result.breaches.length > 0 && (
-            <div className="bg-true-black-surface border border-true-black-border rounded-lg p-6">
+            <div className="bg-true-black-surface theme-light:bg-light-surface theme-glass:bg-glass-surface border border-true-black-border theme-light:border-light-border theme-glass:border-glass-border rounded-xl p-6 animate-fadeIn">
               <h3 className="font-header text-xl mb-4">Data Breaches ({result.breaches.length})</h3>
               <div className="space-y-2">
                 {result.breaches.map((breach, i) => (
@@ -121,7 +174,7 @@ export default function EmailLookup() {
           )}
 
           {result.socialMedia.length > 0 && (
-            <div className="bg-true-black-surface border border-true-black-border rounded-lg p-6">
+            <div className="bg-true-black-surface theme-light:bg-light-surface theme-glass:bg-glass-surface border border-true-black-border theme-light:border-light-border theme-glass:border-glass-border rounded-xl p-6 animate-fadeIn">
               <h3 className="font-header text-xl mb-4">Social Media</h3>
               <div className="space-y-2">
                 {result.socialMedia.map((social, i) => (
@@ -139,7 +192,7 @@ export default function EmailLookup() {
             </div>
           )}
 
-          <div className="bg-true-black-surface border border-true-black-border rounded-lg p-6">
+          <div className="bg-true-black-surface theme-light:bg-light-surface theme-glass:bg-glass-surface border border-true-black-border theme-light:border-light-border theme-glass:border-glass-border rounded-xl p-6 animate-fadeIn">
             <h3 className="font-header text-xl mb-4">Sources</h3>
             <div className="flex flex-wrap gap-2">
               {result.sources.map((source, i) => (

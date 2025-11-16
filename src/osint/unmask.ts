@@ -11,6 +11,9 @@
  */
 
 import type { Env } from '../types';
+import { parsePhoneNumber, isValidPhoneNumber } from 'libphonenumber-js';
+import { OfflineBreachChecker } from './breach-checker';
+import { SpiderFootClient } from './spiderfoot-client';
 
 export interface UnmaskResult {
   primaryIdentifier: string;
@@ -60,13 +63,17 @@ export interface TimelineEvent {
 
 export class OSINTUnmasker {
   private env: Env;
-  private osintIndustriesApiKey: string;
-  private tracersApiKey: string;
+  private osintIndustriesApiKey: string; // Deprecated
+  private tracersApiKey: string; // Deprecated
+  private breachChecker: OfflineBreachChecker;
+  private spiderFootClient: SpiderFootClient;
 
   constructor(env: Env) {
     this.env = env;
     this.osintIndustriesApiKey = env.OSINT_INDUSTRIES_API_KEY || 'credential:osint_industries_api_key';
     this.tracersApiKey = env.TRACERS_API_KEY || 'credential:tracers_api_key';
+    this.breachChecker = new OfflineBreachChecker(env);
+    this.spiderFootClient = new SpiderFootClient(env);
   }
 
   /**
@@ -104,7 +111,7 @@ export class OSINTUnmasker {
       identityGraph.socialMedia = { ...identityGraph.socialMedia, ...emailResult.socialMedia };
       riskIndicators.dataBreachExposure.push(...emailResult.breaches);
       timeline.push(...emailResult.timeline);
-      sources.push('OSINT Industries', 'Have I Been Pwned', 'Hunter.io');
+      sources.push('OSINT Industries', 'Have I Been Pwned', 'EmailRep.io');
     }
 
     // Phone unmasking
@@ -117,7 +124,7 @@ export class OSINTUnmasker {
       });
       identityGraph.phoneNumbers.push(...phoneResult.additionalNumbers);
       timeline.push(...phoneResult.timeline);
-      sources.push('Phoneinfoga', 'NumVerify', 'Truecaller');
+      sources.push('Phoneinfoga', 'libphonenumber', 'Truecaller');
     }
 
     // Domain unmasking
@@ -126,17 +133,36 @@ export class OSINTUnmasker {
       identityGraph.domainsOwned.push(identifier.domain, ...domainResult.additionalDomains);
       riskIndicators.domainAge = domainResult.age;
       timeline.push(...domainResult.timeline);
-      sources.push('WHOIS', 'Certificate Transparency', 'URLScan.io');
+      sources.push('ICANN RDAP', 'Certificate Transparency', 'URLScan.io');
     }
 
-    // Tracers lookup (if name available)
+    // SpiderFoot lookup (replaces Tracers/OSINT Industries - if name available)
     if (identifier.name) {
-      const tracersResult = await this.tracersLookup(identifier.name, identifier.email, identifier.phone);
-      identityGraph.aliases.push(...tracersResult.aliases);
-      riskIndicators.criminalRecords = tracersResult.criminalRecords;
-      riskIndicators.addressHistory = tracersResult.addressHistory;
-      timeline.push(...tracersResult.timeline);
-      sources.push('Tracers', 'PACER', 'Public Records');
+      // Try SpiderFoot first (self-hosted)
+      const spiderFootAvailable = await this.spiderFootClient.isAvailable();
+      if (spiderFootAvailable) {
+        const spiderFootResult = await this.spiderFootClient.scanIdentifier(identifier.name, 'name');
+        if (spiderFootResult.success && spiderFootResult.results) {
+          identityGraph.aliases.push(...(spiderFootResult.results.aliases || []));
+          identityGraph.emailAddresses.push(...(spiderFootResult.results.emails || []));
+          identityGraph.phoneNumbers.push(...(spiderFootResult.results.phones?.map(p => ({
+            number: p,
+            type: 'mobile' as const,
+          })) || []));
+          identityGraph.domainsOwned.push(...(spiderFootResult.results.domains || []));
+          identityGraph.socialMedia = { ...identityGraph.socialMedia, ...(spiderFootResult.results.socialMedia || {}) };
+          riskIndicators.dataBreachExposure.push(...(spiderFootResult.results.breaches || []));
+          sources.push('SpiderFoot');
+        }
+      } else {
+        // Fallback to legacy Tracers lookup (deprecated)
+        const tracersResult = await this.tracersLookup(identifier.name, identifier.email, identifier.phone);
+        identityGraph.aliases.push(...tracersResult.aliases);
+        riskIndicators.criminalRecords = tracersResult.criminalRecords;
+        riskIndicators.addressHistory = tracersResult.addressHistory;
+        timeline.push(...tracersResult.timeline);
+        sources.push('Tracers (deprecated)', 'PACER', 'Public Records');
+      }
     }
 
     // Social media deep dive
@@ -210,44 +236,38 @@ export class OSINTUnmasker {
       console.error('OSINT Industries API error:', error);
     }
 
-    // Have I Been Pwned
+    // Have I Been Pwned (using offline breach checker)
     try {
-      const hibpKey = this.env.HIBP_API_KEY || 'credential:hibp_api_key';
-      const response = await fetch(`https://haveibeenpwned.com/api/v3/breachedaccount/${encodeURIComponent(email)}`, {
-        headers: {
-          'hibp-api-key': hibpKey,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json() as Array<{ Name: string }>;
-        breaches.push(...data.map((b) => b.Name));
+      const breachResult = await this.breachChecker.checkEmail(email);
+      if (breachResult.found && breachResult.breaches.length > 0) {
+        breaches.push(...breachResult.breaches.map((b) => b.name));
       }
     } catch (error) {
-      console.error('HIBP API error:', error);
+      console.error('Breach check error:', error);
     }
 
-    // Hunter.io
+    // EmailRep.io (replaces Hunter.io - free, no API key)
     try {
-      const hunterKey = this.env.HUNTER_API_KEY || 'credential:hunter_api_key';
       const response = await fetch(
-        `https://api.hunter.io/v2/email-verifier?email=${encodeURIComponent(email)}&api_key=${hunterKey}`
+        `https://emailrep.io/${encodeURIComponent(email)}`
       );
 
       if (response.ok) {
         const data = await response.json() as {
-          data?: { domain?: string };
+          details?: {
+            domain?: string;
+          };
         };
-        if (data.data?.domain) {
+        if (data.details) {
           timeline.push({
             date: new Date().toISOString().split('T')[0],
-            event: `Domain associated: ${data.data.domain}`,
-            source: 'Hunter.io',
+            event: `Email verified via EmailRep.io`,
+            source: 'EmailRep.io',
           });
         }
       }
     } catch (error) {
-      console.error('Hunter.io API error:', error);
+      console.error('EmailRep.io API error:', error);
     }
 
     return {
@@ -270,35 +290,53 @@ export class OSINTUnmasker {
     const additionalNumbers: Array<{ number: string; type: 'mobile' | 'voip' | 'landline'; carrier?: string }> = [];
     const timeline: TimelineEvent[] = [];
 
-    // NumVerify
+    // libphonenumber-js (offline, no API calls needed)
     try {
-      const numverifyKey = this.env.NUMVERIFY_API_KEY || 'credential:numverify_api_key';
-      const response = await fetch(
-        `http://apilayer.net/api/validate?access_key=${numverifyKey}&number=${encodeURIComponent(phone)}`
-      );
-
-      if (response.ok) {
-        const data = await response.json() as {
-          line_type?: string;
-          carrier?: string;
-        };
-        const type = data.line_type === 'mobile' ? 'mobile' : data.line_type === 'voip' ? 'voip' : 'landline';
-        
+      if (!isValidPhoneNumber(phone)) {
         timeline.push({
           date: new Date().toISOString().split('T')[0],
-          event: `Phone validated: ${phone} (${type})`,
-          source: 'NumVerify',
+          event: `Phone validation failed: ${phone} (invalid format)`,
+          source: 'libphonenumber',
         });
 
         return {
-          type,
-          carrier: data.carrier || 'unknown',
+          type: 'mobile',
           additionalNumbers,
           timeline,
         };
       }
+
+      const phoneNumber = parsePhoneNumber(phone);
+      const numberType = phoneNumber.getType();
+      
+      // Map libphonenumber types to our types
+      let type: 'mobile' | 'voip' | 'landline' = 'mobile';
+      if (numberType === 'MOBILE') {
+        type = 'mobile';
+      } else if (numberType === 'FIXED_LINE' || numberType === 'FIXED_LINE_OR_MOBILE') {
+        type = 'landline';
+      } else if (numberType === 'VOIP') {
+        type = 'voip';
+      }
+
+      // Carrier name lookup is not available in libphonenumber-js
+      // Would require additional carrier database or API
+      const carrier: string | undefined = undefined;
+
+      timeline.push({
+        date: new Date().toISOString().split('T')[0],
+        event: `Phone validated: ${phone} (${type}${carrier ? `, ${carrier}` : ''})`,
+        source: 'libphonenumber',
+      });
+
+      return {
+        type,
+        carrier: carrier || 'unknown',
+        additionalNumbers,
+        timeline,
+      };
     } catch (error) {
-      console.error('NumVerify API error:', error);
+      console.error('libphonenumber validation error:', error);
     }
 
     return {
@@ -319,29 +357,38 @@ export class OSINTUnmasker {
     const additionalDomains: string[] = [];
     const timeline: TimelineEvent[] = [];
 
-    // WHOIS lookup
+    // ICANN RDAP lookup (free, unlimited, official)
     try {
-      const whoisKey = this.env.WHOIS_API_KEY || 'credential:whois_api_key';
-      const response = await fetch(
-        `https://www.whoisxmlapi.com/whoisserver/WhoisService?apiKey=${whoisKey}&domainName=${domain}&outputFormat=JSON`
-      );
-
-      if (response.ok) {
-        const data = await response.json() as {
-          WhoisRecord?: {
-            registryData?: { createdDate?: string };
-            createdDate?: string;
-          };
+      // Try RDAP first (most TLDs supported)
+      const rdapResponse = await fetch(`https://rdap.org/domain/${domain}`);
+      
+      if (rdapResponse.ok) {
+        const rdapData = await rdapResponse.json() as {
+          events?: Array<{
+            eventAction: string;
+            eventDate: string;
+          }>;
+          nameservers?: Array<{
+            ldhName: string;
+          }>;
+          entities?: Array<{
+            vcardArray?: Array<unknown>;
+            roles?: string[];
+          }>;
         };
-        const creationDate = data.WhoisRecord?.registryData?.createdDate || 
-                           data.WhoisRecord?.createdDate;
-        
+
+        // Extract creation date from events
+        const registrationEvent = rdapData.events?.find(
+          (e) => e.eventAction === 'registration'
+        );
+        const creationDate = registrationEvent?.eventDate;
+
         if (creationDate) {
           const age = this.calculateDomainAge(creationDate);
           timeline.push({
             date: creationDate,
             event: `Domain registered: ${domain}`,
-            source: 'WHOIS',
+            source: 'ICANN RDAP',
           });
 
           return {
@@ -351,8 +398,46 @@ export class OSINTUnmasker {
           };
         }
       }
+
+      // Fallback: Try alternative RDAP servers for specific TLDs
+      // Some TLDs use different RDAP servers (e.g., .com uses rdap.verisign.com)
+      const tld = domain.split('.').pop()?.toLowerCase();
+      if (tld === 'com' || tld === 'net') {
+        const verisignResponse = await fetch(
+          `https://rdap.verisign.com/${tld}/domain/${domain}`
+        );
+        
+        if (verisignResponse.ok) {
+          const verisignData = await verisignResponse.json() as {
+            events?: Array<{
+              eventAction: string;
+              eventDate: string;
+            }>;
+          };
+
+          const registrationEvent = verisignData.events?.find(
+            (e) => e.eventAction === 'registration'
+          );
+          const creationDate = registrationEvent?.eventDate;
+
+          if (creationDate) {
+            const age = this.calculateDomainAge(creationDate);
+            timeline.push({
+              date: creationDate,
+              event: `Domain registered: ${domain}`,
+              source: 'ICANN RDAP (Verisign)',
+            });
+
+            return {
+              additionalDomains,
+              age,
+              timeline,
+            };
+          }
+        }
+      }
     } catch (error) {
-      console.error('WHOIS API error:', error);
+      console.error('ICANN RDAP lookup error:', error);
     }
 
     return {

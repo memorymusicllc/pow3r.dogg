@@ -4,18 +4,29 @@ import { useThemeStore } from './stores/theme-store';
 import UnifiedDashboard from './components/UnifiedDashboard';
 
 function App() {
-  const { fetchConfig, loading } = useConfigStore();
-  const { theme } = useThemeStore();
+  const { fetchConfig, loading, theme: configTheme, setTheme: setConfigTheme } = useConfigStore();
+  const { theme, setTheme } = useThemeStore();
 
   useEffect(() => {
     fetchConfig();
   }, [fetchConfig]);
 
+  // Sync theme store with config store
+  useEffect(() => {
+    if (configTheme && configTheme !== theme) {
+      setTheme(configTheme);
+    }
+  }, [configTheme, theme, setTheme]);
+
   useEffect(() => {
     document.documentElement.className = `theme-${theme}`;
     // Also set data-theme for CSS variable support
     document.documentElement.setAttribute('data-theme', theme);
-  }, [theme]);
+    // Sync config store theme
+    if (configTheme !== theme) {
+      setConfigTheme(theme);
+    }
+  }, [theme, configTheme, setConfigTheme]);
 
   if (loading) {
     return (

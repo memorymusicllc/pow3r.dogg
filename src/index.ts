@@ -762,7 +762,63 @@ async function handleTelegram(
 ): Promise<Response> {
   const url = new URL(request.url);
 
-  // Guard Dog endpoint
+  // Guard Dog endpoints
+  if (url.pathname === '/telegram/guard/deploy' && request.method === 'POST') {
+    try {
+      const body = await request.json() as Record<string, unknown>;
+      const { GuardDog } = await import('./telegram/guard');
+      
+      const guardDog = new GuardDog(env);
+      const state = await guardDog.deploy(
+        body.chatId as string,
+        body.userId as string,
+        body.config as Record<string, unknown>
+      );
+      return jsonResponse({ success: true, state }, corsHeaders);
+    } catch (error) {
+      return jsonResponse(
+        { error: 'Guard Dog deployment failed', message: String(error) },
+        corsHeaders,
+        500
+      );
+    }
+  }
+
+  if (url.pathname === '/telegram/guard/state' && request.method === 'GET') {
+    try {
+      const chatId = url.searchParams.get('chatId');
+      const userId = url.searchParams.get('userId');
+      
+      if (!chatId || !userId) {
+        return jsonResponse(
+          { error: 'Missing chatId or userId' },
+          corsHeaders,
+          400
+        );
+      }
+
+      const { GuardDog } = await import('./telegram/guard');
+      const guardDog = new GuardDog(env);
+      const state = await guardDog.getState(chatId, userId);
+      
+      if (!state) {
+        return jsonResponse(
+          { success: false, message: 'Guard Dog not deployed for this chat/user' },
+          corsHeaders,
+          404
+        );
+      }
+
+      return jsonResponse({ success: true, state }, corsHeaders);
+    } catch (error) {
+      return jsonResponse(
+        { error: 'Failed to get Guard Dog state', message: String(error) },
+        corsHeaders,
+        500
+      );
+    }
+  }
+
   if (url.pathname === '/telegram/guard' && request.method === 'POST') {
     try {
       const body = await request.json() as Record<string, unknown>;
@@ -809,7 +865,84 @@ async function handleTelegram(
     }
   }
 
-  // Impersonation endpoint
+  // Impersonation endpoints
+  if (url.pathname === '/telegram/impersonate/enable' && request.method === 'POST') {
+    try {
+      const body = await request.json() as Record<string, unknown>;
+      const { ImpersonationBot } = await import('./telegram/impersonate');
+      
+      const impersonationBot = new ImpersonationBot(env);
+      const state = await impersonationBot.enable(
+        body.chatId as string,
+        body.attackerId as string,
+        body.victimId as string,
+        body.styleData as Record<string, unknown>
+      );
+      return jsonResponse({ success: true, state }, corsHeaders);
+    } catch (error) {
+      return jsonResponse(
+        { error: 'Impersonation enable failed', message: String(error) },
+        corsHeaders,
+        500
+      );
+    }
+  }
+
+  if (url.pathname === '/telegram/impersonate/disable' && request.method === 'POST') {
+    try {
+      const body = await request.json() as Record<string, unknown>;
+      const { ImpersonationBot } = await import('./telegram/impersonate');
+      
+      const impersonationBot = new ImpersonationBot(env);
+      await impersonationBot.disable(
+        body.chatId as string,
+        body.attackerId as string
+      );
+      return jsonResponse({ success: true }, corsHeaders);
+    } catch (error) {
+      return jsonResponse(
+        { error: 'Impersonation disable failed', message: String(error) },
+        corsHeaders,
+        500
+      );
+    }
+  }
+
+  if (url.pathname === '/telegram/impersonate/state' && request.method === 'GET') {
+    try {
+      const chatId = url.searchParams.get('chatId');
+      const attackerId = url.searchParams.get('attackerId');
+      
+      if (!chatId || !attackerId) {
+        return jsonResponse(
+          { error: 'Missing chatId or attackerId' },
+          corsHeaders,
+          400
+        );
+      }
+
+      const { ImpersonationBot } = await import('./telegram/impersonate');
+      const impersonationBot = new ImpersonationBot(env);
+      const state = await impersonationBot.getState(chatId, attackerId);
+      
+      if (!state) {
+        return jsonResponse(
+          { success: false, message: 'Impersonation not enabled for this chat/attacker' },
+          corsHeaders,
+          404
+        );
+      }
+
+      return jsonResponse({ success: true, state }, corsHeaders);
+    } catch (error) {
+      return jsonResponse(
+        { error: 'Failed to get impersonation state', message: String(error) },
+        corsHeaders,
+        500
+      );
+    }
+  }
+
   if (url.pathname === '/telegram/impersonate' && request.method === 'POST') {
     try {
       const body = await request.json() as Record<string, unknown>;

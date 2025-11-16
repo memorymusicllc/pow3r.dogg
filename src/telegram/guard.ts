@@ -201,15 +201,36 @@ export class GuardDog {
       if (textLower.includes(pattern)) paymentScore += 0.3;
     }
 
-    const socialEngineeringScore = Math.max(urgencyScore, credentialScore, paymentScore);
+    // Combine scores (urgency + credential/payment is more suspicious)
+    // Cap individual scores at 1.0, then combine with weighted sum
+    urgencyScore = Math.min(urgencyScore, 1.0);
+    credentialScore = Math.min(credentialScore, 1.0);
+    paymentScore = Math.min(paymentScore, 1.0);
+    
+    // Weighted combination: urgency amplifies other patterns
+    const combinedScore = Math.max(
+      urgencyScore + credentialScore * 0.7, // Urgency + credentials
+      urgencyScore + paymentScore * 0.7,   // Urgency + payment
+      credentialScore + paymentScore,       // Credentials + payment
+      urgencyScore * 1.5,                   // High urgency alone
+      credentialScore * 1.2,                // High credential requests alone
+      paymentScore * 1.2                   // High payment demands alone
+    );
 
-    if (socialEngineeringScore >= 0.85) {
+    const socialEngineeringScore = Math.min(combinedScore, 1.0);
+
+    if (socialEngineeringScore >= 0.6) {
+      const patterns: string[] = [];
+      if (urgencyScore > 0) patterns.push('urgency_language');
+      if (credentialScore > 0) patterns.push('credential_requests');
+      if (paymentScore > 0) patterns.push('payment_demands');
+      
       return {
         detected: true,
         rule: 'social_engineering_patterns',
         confidence: socialEngineeringScore,
-        patterns: urgencyScore > 0 ? ['urgency_language'] : credentialScore > 0 ? ['credential_requests'] : ['payment_demands'],
-        action: 'auto_warn',
+        patterns,
+        action: socialEngineeringScore >= 0.85 ? 'auto_warn' : 'flag_for_review',
       };
     }
 

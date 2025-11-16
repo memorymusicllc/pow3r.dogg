@@ -128,3 +128,6 @@ export class ApiClient {
 
 export const apiClient = new ApiClient();
 
+// Export MCP client
+export { mcpClient } from './mcp-client';
+
