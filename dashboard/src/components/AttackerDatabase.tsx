@@ -38,6 +38,8 @@ export default function AttackerDatabase({ onAttackerSelect }: AttackerDatabaseP
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterThreatScore, setFilterThreatScore] = useState<'all' | 'high' | 'medium' | 'low'>('all');
+  const [sortBy, setSortBy] = useState<'threatScore' | 'lastSeen' | 'id'>('threatScore');
   const [selectedAttacker, setSelectedAttacker] = useState<Attacker | null>(null);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
@@ -189,56 +191,86 @@ export default function AttackerDatabase({ onAttackerSelect }: AttackerDatabaseP
   // 2D Rendering (default)
   const render2D = () => (
     <div>
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <h2 className="font-header text-2xl">Attacker Database</h2>
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => {
-              setEditingAttacker({
-                fingerprint: '',
-                ipAddress: '',
-                phoneNumber: '',
-                userAgent: '',
-                threatScore: 0.5,
-                aliases: [],
-                metadata: {},
-              });
-              setSelectedAttacker(null);
-              setShowCreateDialog(true);
-            }}
-            className="flex items-center gap-2 px-4 py-2 bg-true-black-accent theme-light:bg-light-accent theme-glass:bg-glass-accent hover:opacity-90 rounded-lg text-white font-medium transition-all duration-200"
-          >
-            <PlusIcon className="w-5 h-5" />
-            <span>Add Attacker</span>
-          </button>
-          <button
-            onClick={() => setShowUploadDialog(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-true-black-surface theme-light:bg-light-surface theme-glass:bg-glass-surface border border-true-black-border theme-light:border-light-border theme-glass:border-glass-border hover:bg-true-black-bg theme-light:hover:bg-light-bg theme-glass:hover:bg-glass-bg rounded-lg text-true-black-text theme-light:text-light-text theme-glass:text-glass-text font-medium transition-all duration-200"
-          >
-            <span>Upload Research</span>
-          </button>
-        </div>
+      {/* Quick Actions */}
+      <div className="flex flex-wrap justify-end gap-2 mb-6">
+        <button
+          onClick={() => {
+            setEditingAttacker({
+              fingerprint: '',
+              ipAddress: '',
+              phoneNumber: '',
+              userAgent: '',
+              threatScore: 0.5,
+              aliases: [],
+              metadata: {},
+            });
+            setSelectedAttacker(null);
+            setShowCreateDialog(true);
+          }}
+          className="flex items-center gap-2 px-4 py-2 bg-true-black-accent theme-light:bg-light-accent theme-glass:bg-glass-accent hover:opacity-90 rounded-lg text-white font-medium transition-all duration-200"
+        >
+          <PlusIcon className="w-5 h-5" />
+          <span>Add Attacker</span>
+        </button>
+        <button
+          onClick={() => setShowUploadDialog(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-true-black-surface theme-light:bg-light-surface theme-glass:bg-glass-surface border border-true-black-border theme-light:border-light-border theme-glass:border-glass-border hover:bg-true-black-bg theme-light:hover:bg-light-bg theme-glass:hover:bg-glass-bg rounded-lg text-true-black-text theme-light:text-light-text theme-glass:text-glass-text font-medium transition-all duration-200"
+        >
+          <span>Upload Research</span>
+        </button>
       </div>
 
-      <div className="bg-true-black-surface theme-light:bg-light-surface theme-glass:bg-glass-surface border border-true-black-border theme-light:border-light-border theme-glass:border-glass-border rounded-xl p-4 mb-6 max-w-[520px] mx-auto w-full">
-        <div className="flex gap-3">
-          <div className="flex-1 relative">
-            <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-true-black-text-muted theme-light:text-light-text-muted theme-glass:text-glass-text-muted" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-              placeholder="Search by fingerprint, IP, phone, or ID..."
-              className="w-full pl-10 pr-4 py-2.5 bg-true-black-bg theme-light:bg-light-bg theme-glass:bg-glass-bg border border-true-black-border theme-light:border-light-border theme-glass:border-glass-border rounded-lg text-true-black-text theme-light:text-light-text theme-glass:text-glass-text focus:outline-none focus:ring-2 focus:ring-true-black-accent theme-light:focus:ring-light-accent theme-glass:focus:ring-glass-accent"
-            />
+      {/* Enhanced Search and Filters */}
+      <div className="space-y-4 mb-6 max-w-[520px] mx-auto w-full">
+        <div className="bg-true-black-surface theme-light:bg-light-surface theme-glass:bg-glass-surface border border-true-black-border theme-light:border-light-border theme-glass:border-glass-border rounded-xl p-4">
+          <div className="flex gap-3 mb-4">
+            <div className="flex-1 relative">
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-true-black-text-muted theme-light:text-light-text-muted theme-glass:text-glass-text-muted" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                placeholder="Search by fingerprint, IP, phone, or ID..."
+                className="w-full pl-10 pr-4 py-2.5 bg-true-black-bg theme-light:bg-light-bg theme-glass:bg-glass-bg border border-true-black-border theme-light:border-light-border theme-glass:border-glass-border rounded-lg text-true-black-text theme-light:text-light-text theme-glass:text-glass-text focus:outline-none focus:ring-2 focus:ring-true-black-accent theme-light:focus:ring-light-accent theme-glass:focus:ring-glass-accent"
+              />
+            </div>
+            <button
+              onClick={handleSearch}
+              className="px-6 py-2.5 bg-true-black-accent theme-light:bg-light-accent theme-glass:bg-glass-accent hover:opacity-90 rounded-lg text-white font-medium transition-all duration-200"
+            >
+              Search
+            </button>
           </div>
-          <button
-            onClick={handleSearch}
-            className="px-6 py-2.5 bg-true-black-accent theme-light:bg-light-accent theme-glass:bg-glass-accent hover:opacity-90 rounded-lg text-white font-medium transition-all duration-200"
-          >
-            Search
-          </button>
+          
+          {/* Filter and Sort Controls */}
+          <div className="flex flex-wrap gap-3">
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-true-black-text-muted theme-light:text-light-text-muted theme-glass:text-glass-text-muted">Filter:</label>
+              <select
+                value={filterThreatScore}
+                onChange={(e) => setFilterThreatScore(e.target.value as 'all' | 'high' | 'medium' | 'low')}
+                className="px-3 py-1.5 bg-true-black-bg theme-light:bg-light-bg theme-glass:bg-glass-bg border border-true-black-border theme-light:border-light-border theme-glass:border-glass-border rounded-lg text-true-black-text theme-light:text-light-text theme-glass:text-glass-text text-sm focus:outline-none focus:ring-2 focus:ring-true-black-accent theme-light:focus:ring-light-accent theme-glass:focus:ring-glass-accent"
+              >
+                <option value="all">All Threats</option>
+                <option value="high">High (≥80%)</option>
+                <option value="medium">Medium (50-79%)</option>
+                <option value="low">Low (&lt;50%)</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-true-black-text-muted theme-light:text-light-text-muted theme-glass:text-glass-text-muted">Sort:</label>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as 'threatScore' | 'lastSeen' | 'id')}
+                className="px-3 py-1.5 bg-true-black-bg theme-light:bg-light-bg theme-glass:bg-glass-bg border border-true-black-border theme-light:border-light-border theme-glass:border-glass-border rounded-lg text-true-black-text theme-light:text-light-text theme-glass:text-glass-text text-sm focus:outline-none focus:ring-2 focus:ring-true-black-accent theme-light:focus:ring-light-accent theme-glass:focus:ring-glass-accent"
+              >
+                <option value="threatScore">Threat Score</option>
+                <option value="lastSeen">Last Seen</option>
+                <option value="id">ID</option>
+              </select>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -262,7 +294,19 @@ export default function AttackerDatabase({ onAttackerSelect }: AttackerDatabaseP
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4">
-          {attackers.map((attacker, index) => (
+          {attackers
+            .filter((attacker) => {
+              if (filterThreatScore === 'all') return true;
+              if (filterThreatScore === 'high') return attacker.threatScore >= 0.8;
+              if (filterThreatScore === 'medium') return attacker.threatScore >= 0.5 && attacker.threatScore < 0.8;
+              return attacker.threatScore < 0.5;
+            })
+            .sort((a, b) => {
+              if (sortBy === 'threatScore') return b.threatScore - a.threatScore;
+              if (sortBy === 'lastSeen') return b.lastSeen - a.lastSeen;
+              return a.id.localeCompare(b.id);
+            })
+            .map((attacker, index) => (
             <div
               key={attacker.id}
               onClick={() => handleAttackerClick(attacker)}

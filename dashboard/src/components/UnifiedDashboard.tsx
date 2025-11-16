@@ -46,9 +46,9 @@ export default function UnifiedDashboard() {
         <ThemeIcon className="w-5 h-5" />
       </button>
 
-      {/* Dashboard Cards Grid */}
-      <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
-        <div className="grid grid-cols-1 gap-4 sm:gap-6">
+      {/* Dashboard Cards Grid - Mobile-first responsive */}
+      <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-5 md:space-y-6">
+        <div className="grid grid-cols-1 gap-3 sm:gap-4 md:gap-6 max-w-7xl mx-auto">
           <DashboardOverview />
           <OSINTLookupPanel />
           <AttackerDatabase onAttackerSelect={setSelectedAttackerId} />

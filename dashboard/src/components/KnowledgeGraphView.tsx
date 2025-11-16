@@ -201,8 +201,8 @@ export default function KnowledgeGraphView({ attackerId, compact = false }: Know
 
   // 2D/React Flow Rendering (default)
   const renderReactFlow = () => (
-    <div className="space-y-6">
-      <div className="bg-true-black-surface theme-light:bg-light-surface theme-glass:bg-glass-surface border border-true-black-border theme-light:border-light-border theme-glass:border-glass-border rounded-xl overflow-hidden" style={{ height: compact ? '400px' : '600px' }}>
+    <div className={compact ? 'space-y-3' : 'space-y-6'}>
+      <div className={`bg-true-black-surface theme-light:bg-light-surface theme-glass:bg-glass-surface border border-true-black-border theme-light:border-light-border theme-glass:border-glass-border rounded-xl overflow-hidden transition-all duration-300 ${compact ? 'shadow-md' : 'shadow-lg'}`} style={{ height: compact ? '400px' : '600px' }}>
         {nodes.length > 0 ? (
           <ReactFlow
             nodes={nodes}
@@ -233,18 +233,18 @@ export default function KnowledgeGraphView({ attackerId, compact = false }: Know
         )}
       </div>
 
-      {data && (
+      {data && !compact && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-true-black-surface theme-light:bg-light-surface theme-glass:bg-glass-surface border border-true-black-border theme-light:border-light-border theme-glass:border-glass-border rounded-xl p-6 text-center hover:border-true-black-accent theme-light:hover:border-light-accent theme-glass:hover:border-glass-accent transition-all duration-300">
-            <div className="text-sm text-true-black-text-muted theme-light:text-light-text-muted theme-glass:text-glass-text-muted mb-2">Entities</div>
+          <div className="bg-true-black-surface theme-light:bg-light-surface theme-glass:bg-glass-surface border border-true-black-border theme-light:border-light-border theme-glass:border-glass-border rounded-xl p-6 text-center hover:border-true-black-accent theme-light:hover:border-light-accent theme-glass:hover:border-glass-accent transition-all duration-300 hover:shadow-lg hover:scale-105 animate-fadeIn">
+            <div className="text-sm text-true-black-text-muted theme-light:text-light-text-muted theme-glass:text-glass-text-muted mb-2 uppercase tracking-wide">Entities</div>
             <div className="text-3xl font-bold text-true-black-text theme-light:text-light-text theme-glass:text-glass-text">{data.entities.length}</div>
           </div>
-          <div className="bg-true-black-surface theme-light:bg-light-surface theme-glass:bg-glass-surface border border-true-black-border theme-light:border-light-border theme-glass:border-glass-border rounded-xl p-6 text-center hover:border-true-black-accent theme-light:hover:border-light-accent theme-glass:hover:border-glass-accent transition-all duration-300">
-            <div className="text-sm text-true-black-text-muted theme-light:text-light-text-muted theme-glass:text-glass-text-muted mb-2">Relationships</div>
+          <div className="bg-true-black-surface theme-light:bg-light-surface theme-glass:bg-glass-surface border border-true-black-border theme-light:border-light-border theme-glass:border-glass-border rounded-xl p-6 text-center hover:border-true-black-accent theme-light:hover:border-light-accent theme-glass:hover:border-glass-accent transition-all duration-300 hover:shadow-lg hover:scale-105 animate-fadeIn" style={{ animationDelay: '100ms' }}>
+            <div className="text-sm text-true-black-text-muted theme-light:text-light-text-muted theme-glass:text-glass-text-muted mb-2 uppercase tracking-wide">Relationships</div>
             <div className="text-3xl font-bold text-true-black-text theme-light:text-light-text theme-glass:text-glass-text">{data.relationships.length}</div>
           </div>
-          <div className="bg-true-black-surface theme-light:bg-light-surface theme-glass:bg-glass-surface border border-true-black-border theme-light:border-light-border theme-glass:border-glass-border rounded-xl p-6 text-center hover:border-true-black-accent theme-light:hover:border-light-accent theme-glass:hover:border-glass-accent transition-all duration-300">
-            <div className="text-sm text-true-black-text-muted theme-light:text-light-text-muted theme-glass:text-glass-text-muted mb-2">Facts</div>
+          <div className="bg-true-black-surface theme-light:bg-light-surface theme-glass:bg-glass-surface border border-true-black-border theme-light:border-light-border theme-glass:border-glass-border rounded-xl p-6 text-center hover:border-true-black-accent theme-light:hover:border-light-accent theme-glass:hover:border-glass-accent transition-all duration-300 hover:shadow-lg hover:scale-105 animate-fadeIn" style={{ animationDelay: '200ms' }}>
+            <div className="text-sm text-true-black-text-muted theme-light:text-light-text-muted theme-glass:text-glass-text-muted mb-2 uppercase tracking-wide">Facts</div>
             <div className="text-3xl font-bold text-true-black-text theme-light:text-light-text theme-glass:text-glass-text">{data.facts.length}</div>
           </div>
         </div>

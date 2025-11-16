@@ -43,32 +43,51 @@ export default function OSINTLookupPanel() {
     emitComponentEvent(COMPONENT_ID, 'tab_changed', { tab: tabId });
   };
 
-  // 2D Rendering (default)
+  // 2D Rendering (default) - Card-based layout with all lookup types visible
   const render2D = () => (
     <div className="space-y-6">
-      {/* Tab Navigation */}
-      <div className="flex flex-wrap gap-2 border-b border-true-black-border theme-light:border-light-border theme-glass:border-glass-border pb-4">
-        {tabs.map((tab) => {
+      {/* Lookup Type Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {tabs.map((tab, index) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
             <button
               key={tab.id}
               onClick={() => handleTabChange(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+              className={`bg-true-black-surface theme-light:bg-light-surface theme-glass:bg-glass-surface border-2 rounded-xl p-6 hover:border-true-black-accent theme-light:hover:border-light-accent theme-glass:hover:border-glass-accent transition-all duration-300 hover:shadow-lg hover:scale-105 animate-fadeIn ${
                 isActive
-                  ? 'bg-true-black-accent theme-light:bg-light-accent theme-glass:bg-glass-accent text-white shadow-lg scale-105'
-                  : 'bg-true-black-surface theme-light:bg-light-surface theme-glass:bg-glass-surface text-true-black-text-muted theme-light:text-light-text-muted theme-glass:text-glass-text-muted hover:bg-true-black-bg theme-light:hover:bg-light-bg theme-glass:hover:bg-glass-bg hover:text-true-black-text theme-light:hover:text-light-text theme-glass:hover:text-glass-text'
+                  ? 'border-true-black-accent theme-light:border-light-accent theme-glass:border-glass-accent shadow-lg scale-105'
+                  : 'border-true-black-border theme-light:border-light-border theme-glass:border-glass-border'
               }`}
+              style={{ animationDelay: `${index * 100}ms` }}
             >
-              <Icon className="w-5 h-5" />
-              <span>{tab.label}</span>
+              <div className="flex flex-col items-center gap-3">
+                <div className={`p-3 rounded-lg transition-colors ${
+                  isActive
+                    ? 'bg-true-black-accent theme-light:bg-light-accent theme-glass:bg-glass-accent'
+                    : 'bg-true-black-bg theme-light:bg-light-bg theme-glass:bg-glass-bg'
+                }`}>
+                  <Icon className={`w-8 h-8 ${
+                    isActive
+                      ? 'text-white'
+                      : 'text-true-black-text-muted theme-light:text-light-text-muted theme-glass:text-glass-text-muted'
+                  }`} />
+                </div>
+                <span className={`font-header text-sm font-medium ${
+                  isActive
+                    ? 'text-true-black-text theme-light:text-light-text theme-glass:text-glass-text'
+                    : 'text-true-black-text-muted theme-light:text-light-text-muted theme-glass:text-glass-text-muted'
+                }`}>
+                  {tab.label}
+                </span>
+              </div>
             </button>
           );
         })}
       </div>
 
-      {/* Active Tab Content */}
+      {/* Active Lookup Content */}
       <div className="animate-fadeIn">
         {tabs.find((tab) => tab.id === activeTab)?.component}
       </div>

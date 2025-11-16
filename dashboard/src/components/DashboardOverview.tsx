@@ -180,19 +180,37 @@ export default function DashboardOverview() {
               style={{ animationDelay: `${index * 100}ms` }}
             >
               <div className="flex items-center justify-between mb-4">
-                <Icon className={`w-8 h-8`} style={{ color: card.color }} />
-                {getTrendIcon(card.trend)}
+                <div className="p-2 rounded-lg" style={{ backgroundColor: `${card.color}20` }}>
+                  <Icon className={`w-6 h-6`} style={{ color: card.color }} />
+                </div>
+                <div className="flex items-center gap-1">
+                  {getTrendIcon(card.trend)}
+                  {card.trend !== 'neutral' && (
+                    <span className={`text-xs font-semibold ${
+                      card.trend === 'up' ? 'text-green-400' : 'text-red-400'
+                    }`}>
+                      {card.trend === 'up' ? '↑' : '↓'}
+                    </span>
+                  )}
+                </div>
               </div>
-              <h3 className="font-header text-lg mb-2 text-true-black-text-muted theme-light:text-light-text-muted theme-glass:text-glass-text-muted">
+              <h3 className="font-header text-sm mb-2 text-true-black-text-muted theme-light:text-light-text-muted theme-glass:text-glass-text-muted uppercase tracking-wide">
                 {card.label}
               </h3>
-              <p className="text-4xl font-bold text-true-black-text theme-light:text-light-text theme-glass:text-glass-text">
+              <p className="text-4xl font-bold text-true-black-text theme-light:text-light-text theme-glass:text-glass-text mb-2">
                 {loading ? (
                   <span className="inline-block w-16 h-10 bg-true-black-bg theme-light:bg-light-bg theme-glass:bg-glass-bg rounded animate-pulse" />
                 ) : (
                   card.value.toLocaleString()
                 )}
               </p>
+              {card.trend !== 'neutral' && !loading && (
+                <p className={`text-xs font-medium ${
+                  card.trend === 'up' ? 'text-green-400' : 'text-red-400'
+                }`}>
+                  {card.trend === 'up' ? 'Increasing' : 'Decreasing'} trend
+                </p>
+              )}
             </div>
           );
         })}

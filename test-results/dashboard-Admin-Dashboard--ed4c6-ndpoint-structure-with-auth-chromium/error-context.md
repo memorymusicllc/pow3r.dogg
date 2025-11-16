@@ -1,0 +1,113 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - button "Toggle theme" [ref=e4] [cursor=pointer]:
+    - img [ref=e5]
+  - generic [ref=e8]:
+    - generic [ref=e10]:
+      - generic [ref=e11]:
+        - generic [ref=e12]:
+          - img [ref=e15]
+          - heading "Total Threats" [level=3] [ref=e17]
+          - paragraph [ref=e18]
+        - generic [ref=e20]:
+          - img [ref=e23]
+          - heading "High Threat" [level=3] [ref=e25]
+          - paragraph [ref=e26]
+        - generic [ref=e28]:
+          - img [ref=e31]
+          - heading "Active (24h)" [level=3] [ref=e33]
+          - paragraph [ref=e34]
+        - generic [ref=e36]:
+          - img [ref=e39]
+          - heading "New (24h)" [level=3] [ref=e41]
+          - paragraph [ref=e42]
+      - generic [ref=e45]:
+        - heading "Average Threat Score" [level=3] [ref=e46]
+        - generic [ref=e47]: ...%
+      - heading "Top Threats" [level=3] [ref=e50]
+    - generic [ref=e56]:
+      - generic [ref=e57]:
+        - button "Email" [ref=e58] [cursor=pointer]:
+          - generic [ref=e59]:
+            - img [ref=e61]
+            - generic [ref=e63]: Email
+        - button "Image" [ref=e64] [cursor=pointer]:
+          - generic [ref=e65]:
+            - img [ref=e67]
+            - generic [ref=e69]: Image
+        - button "Address" [ref=e70] [cursor=pointer]:
+          - generic [ref=e71]:
+            - img [ref=e73]
+            - generic [ref=e76]: Address
+        - button "Business" [ref=e77] [cursor=pointer]:
+          - generic [ref=e78]:
+            - img [ref=e80]
+            - generic [ref=e82]: Business
+      - generic [ref=e86]:
+        - generic [ref=e87]:
+          - generic [ref=e88]: Email Address
+          - textbox "example@domain.com" [ref=e89]
+        - button "Lookup" [ref=e91] [cursor=pointer]
+    - generic [ref=e93]:
+      - generic [ref=e94]:
+        - button "Add Attacker" [ref=e95] [cursor=pointer]:
+          - img [ref=e96]
+          - generic [ref=e98]: Add Attacker
+        - button "Upload Research" [ref=e99] [cursor=pointer]:
+          - generic [ref=e100]: Upload Research
+      - generic [ref=e102]:
+        - generic [ref=e103]:
+          - generic [ref=e104]:
+            - img [ref=e105]
+            - textbox "Search by fingerprint, IP, phone, or ID..." [ref=e107]
+          - button "Search" [ref=e108] [cursor=pointer]
+        - generic [ref=e109]:
+          - generic [ref=e110]:
+            - generic [ref=e111]: "Filter:"
+            - combobox [ref=e112]:
+              - option "All Threats" [selected]
+              - option "High (≥80%)"
+              - option "Medium (50-79%)"
+              - option "Low (<50%)"
+          - generic [ref=e113]:
+            - generic [ref=e114]: "Sort:"
+            - combobox [ref=e115]:
+              - option "Threat Score" [selected]
+              - option "Last Seen"
+              - option "ID"
+      - generic [ref=e116]: Failed to load attackers
+      - generic [ref=e117]:
+        - img [ref=e118]
+        - paragraph [ref=e120]: No attackers found
+    - generic [ref=e122]:
+      - generic [ref=e124]:
+        - button "Upload Evidence" [ref=e125] [cursor=pointer]:
+          - img [ref=e126]
+          - generic [ref=e128]: Upload Evidence
+        - button "Export" [ref=e129] [cursor=pointer]:
+          - img [ref=e130]
+          - generic [ref=e132]: Export
+      - generic [ref=e134]:
+        - generic [ref=e135]:
+          - img [ref=e136]
+          - textbox "Search evidence..." [ref=e138]
+        - combobox [ref=e139]:
+          - option "All" [selected]
+          - option "Communication"
+          - option "File"
+          - option "Screenshot"
+          - option "Log"
+          - option "Other"
+      - generic [ref=e140]: Failed to load evidence
+      - generic [ref=e141]:
+        - img [ref=e142]
+        - paragraph [ref=e144]: No evidence found
+    - generic [ref=e145]:
+      - img [ref=e146]
+      - paragraph [ref=e148]: Select an attacker from the Attackers section to view their knowledge graph.
+      - generic [ref=e149]:
+        - img [ref=e150]
+        - generic [ref=e152]: The knowledge graph shows relationships between entities, evidence, and connections.
+```
