@@ -10,7 +10,6 @@
     "deploy:production": "wrangler deploy --env production",
     "test": "vitest",
     "test:e2e": "playwright test",
-    "test:e2e:all": "playwright test",
     "lint": "eslint src --ext .ts",
     "typecheck": "tsc --noEmit",
     "guardian:check": "npm run guardian:schema && npm run guardian:mock-scan && npm run guardian:test && npm run guardian:config && npm run guardian:law",
