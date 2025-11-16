@@ -372,12 +372,14 @@ export class EnhancedEvidenceChain {
     }
 
     try {
-      // Simplified blockchain anchoring
-      // In production, would use actual Ethereum transaction
-      // For now, return a mock transaction ID
-      const txId = `0x${crypto.randomUUID().replace(/-/g, '')}`;
+      // Blockchain anchoring - generates a deterministic hash-based transaction ID
+      // This is a placeholder implementation until Ethereum integration is complete
+      // The transaction ID is derived from the evidence hash for determinism
+      const hashBytes = new TextEncoder().encode(hash);
+      const hashArray = Array.from(new Uint8Array(hashBytes.slice(0, 16)));
+      const txId = `0x${hashArray.map(b => b.toString(16).padStart(2, '0')).join('')}`;
       
-      // In production:
+      // TODO: In production, implement actual Ethereum transaction:
       // const tx = await ethereum.sendTransaction({
       //   to: EVIDENCE_CONTRACT_ADDRESS,
       //   data: encodeEvidenceHash(hash, evidenceId)

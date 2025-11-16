@@ -101,8 +101,16 @@ export class StealthOSINT {
 
   /**
    * Execute an OSINT query with stealth measures
+   * 
+   * NOTE: This is a placeholder implementation and should not be used in production.
+   * Use OSINTUnmasker or dedicated lookup classes instead.
    */
   private async executeQuery(query: OSINTQuery): Promise<unknown> {
+    // Prevent accidental use in production
+    throw new Error(
+      'StealthOSINT.executeQuery: This is a placeholder implementation. ' +
+      'Use OSINTUnmasker or dedicated lookup classes (EmailLookup, etc.) instead.'
+    );
     // Select proxy if rotation enabled
     const proxy = this.config.proxyRotation && this.proxies.length > 0
       ? this.proxies[Math.floor(Math.random() * this.proxies.length)]
@@ -179,33 +187,29 @@ export class StealthOSINT {
 
   /**
    * Build OSINT service URL
+   * 
+   * NOTE: This is a placeholder implementation.
+   * In production, this should use actual OSINT service endpoints.
+   * Currently, this class is not used by the main OSINT implementation.
    */
   private buildOSINTUrl(query: OSINTQuery): string {
-    // Simplified - would use actual OSINT service endpoints
-    const baseUrls: Record<string, string> = {
-      email: 'https://api.osint.example.com/email',
-      phone: 'https://api.osint.example.com/phone',
-      domain: 'https://api.osint.example.com/domain',
-      username: 'https://api.osint.example.com/username',
-      ip: 'https://api.osint.example.com/ip',
-    };
-
-    return `${baseUrls[query.type]}/${encodeURIComponent(query.value)}`;
+    // This is a placeholder - should not be called in production
+    // If called, throw an error to prevent accidental use
+    throw new Error(
+      'StealthOSINT.buildOSINTUrl: This is a placeholder implementation. ' +
+      'Use OSINTUnmasker or dedicated lookup classes instead.'
+    );
   }
 
   /**
    * Get domain from query for cookie jar
    */
   private getDomainFromQuery(query: OSINTQuery): string {
-    const domains: Record<string, string> = {
-      email: 'osint.example.com',
-      phone: 'osint.example.com',
-      domain: 'osint.example.com',
-      username: 'osint.example.com',
-      ip: 'osint.example.com',
-    };
-
-    return domains[query.type] || 'osint.example.com';
+    // This is a placeholder - should not be called in production
+    throw new Error(
+      'StealthOSINT.getDomainFromQuery: This is a placeholder implementation. ' +
+      'Use OSINTUnmasker or dedicated lookup classes instead.'
+    );
   }
 
   /**
