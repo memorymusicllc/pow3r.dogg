@@ -111,62 +111,6 @@ export class StealthOSINT {
       'StealthOSINT.executeQuery: This is a placeholder implementation. ' +
       'Use OSINTUnmasker or dedicated lookup classes (EmailLookup, etc.) instead.'
     );
-    // Select proxy if rotation enabled
-    const proxy = this.config.proxyRotation && this.proxies.length > 0
-      ? this.proxies[Math.floor(Math.random() * this.proxies.length)]
-      : null;
-
-    // Select user agent if rotation enabled
-    const userAgent = this.config.userAgentRotation
-      ? this.userAgents[Math.floor(Math.random() * this.userAgents.length)]
-      : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36';
-
-    // Get cookies from jar if available
-    const cookies = this.config.cookieJarEnabled
-      ? this.cookieJar.get(this.getDomainFromQuery(query))
-      : undefined;
-
-    // Build request
-    const headers: Record<string, string> = {
-      'User-Agent': userAgent,
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      'Accept-Language': 'en-US,en;q=0.9',
-      'Accept-Encoding': 'gzip, deflate, br',
-      'DNT': '1',
-      'Connection': 'keep-alive',
-      'Upgrade-Insecure-Requests': '1',
-    };
-
-    if (cookies) {
-      headers['Cookie'] = cookies;
-    }
-
-    // Make request (simplified - would use actual OSINT service APIs)
-    const url = this.buildOSINTUrl(query);
-    
-    try {
-      const response = await fetch(url, {
-        method: 'GET',
-        headers,
-        // In production, would configure proxy here
-      });
-
-      // Store cookies if received
-      if (this.config.cookieJarEnabled && response.headers.get('Set-Cookie')) {
-        const domain = this.getDomainFromQuery(query);
-        this.cookieJar.set(domain, response.headers.get('Set-Cookie') || '');
-      }
-
-      // Record query timestamp
-      const timestamps = this.queryHistory.get(query.value) || [];
-      timestamps.push(Date.now());
-      this.queryHistory.set(query.value, timestamps);
-
-      return await response.json();
-    } catch (error) {
-      console.error(`OSINT query failed: ${error}`);
-      throw error;
-    }
   }
 
   /**
