@@ -229,7 +229,12 @@ async function continuousVerification() {
 }
 
 // Run continuous verification
-if (import.meta.main) {
+// Check if this is the main module
+const isMain = import.meta.url === `file://${process.argv[1]}` || 
+               process.argv[1]?.includes('verify-media-generation') ||
+               !process.env.NODE_ENV;
+
+if (isMain) {
   continuousVerification().catch((error) => {
     console.error('Verification failed:', error);
     process.exit(1);

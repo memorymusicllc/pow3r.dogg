@@ -462,7 +462,7 @@ async function handleGenerateHoneypotDocument(
   const trackingId = args.trackingId as string | undefined;
 
   const generator = new HoneypotDocumentGenerator(env);
-  const document = await generator.generate(format, content, trackingId);
+  const document = await generator.generate(format, content, trackingId ? { trackingId } : undefined);
 
   return {
     content: [

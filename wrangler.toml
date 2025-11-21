@@ -14,7 +14,29 @@ name = "pow3r-defender-production"
 # database_name = "defender-db"
 # database_id = "YOUR_D1_DATABASE_ID"
 
-# KV Namespaces
+# KV Namespaces (default)
+[[kv_namespaces]]
+binding = "DEFENDER_FORGE"
+id = "a4b67e0b4324472bab4348a0f2a19e0a"
+
+[[kv_namespaces]]
+binding = "CONFIG_STORE"
+id = "0bd1ae60c3f54c7eb0c8d9465245ec47"
+
+[[kv_namespaces]]
+binding = "TELEGRAM_STATE"
+id = "c956774b8879481a8ed762df9bca0238"
+
+# R2 Buckets (default)
+[[r2_buckets]]
+binding = "TELEGRAM_MEDIA"
+bucket_name = "telegram-media"
+
+[[r2_buckets]]
+binding = "EVIDENCE_VAULT"
+bucket_name = "evidence-vault"
+
+# KV Namespaces (production)
 [[env.production.kv_namespaces]]
 binding = "DEFENDER_FORGE"
 id = "a4b67e0b4324472bab4348a0f2a19e0a"
@@ -27,7 +49,7 @@ id = "0bd1ae60c3f54c7eb0c8d9465245ec47"
 binding = "TELEGRAM_STATE"
 id = "c956774b8879481a8ed762df9bca0238"
 
-# R2 Buckets
+# R2 Buckets (production)
 [[env.production.r2_buckets]]
 binding = "TELEGRAM_MEDIA"
 bucket_name = "telegram-media"
