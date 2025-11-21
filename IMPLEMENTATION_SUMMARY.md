@@ -50,7 +50,7 @@
 ## File Structure
 
 ```
-pow3r.dogg/
+pow3r.ddog/
 ├── build.yaml                    ✅ Updated to v4
 ├── telegram-bot.yaml             ✅ Created
 ├── src/

@@ -15,6 +15,7 @@ import { ImageLookup } from './osint/image-lookup';
 import { AddressLookup } from './osint/address-lookup';
 import { BusinessLookup } from './osint/business-lookup';
 import { FileUploadHandler } from './admin/file-upload';
+import { TeamMemberDatabase } from './admin/team-member-db';
 
 function jsonResponse(data: unknown, headers: Record<string, string>, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -567,8 +568,225 @@ export async function handleAdmin(
       }
     }
 
-    // POST /admin/evidence/export - Export timeline
-    if (url.pathname === '/admin/evidence/export' && request.method === 'POST') {
+  // Team Members endpoints
+  if (url.pathname.startsWith('/admin/team-members')) {
+    const teamMemberDb = new TeamMemberDatabase(env);
+
+    // GET /admin/team-members - List team members
+    if (url.pathname === '/admin/team-members' && request.method === 'GET') {
+      try {
+        const role = url.searchParams.get('role') || undefined;
+        const status = url.searchParams.get('status') as 'active' | 'inactive' | 'pending' | undefined;
+        const limit = url.searchParams.get('limit') ? parseInt(url.searchParams.get('limit')!) : undefined;
+        const offset = url.searchParams.get('offset') ? parseInt(url.searchParams.get('offset')!) : undefined;
+
+        const members = await teamMemberDb.queryMembers({
+          role,
+          status,
+          limit,
+          offset,
+        });
+
+        // Transform to match frontend interface (convert timestamps to ISO strings)
+        const transformedMembers = members.map((member) => ({
+          id: member.id,
+          name: member.name,
+          email: member.email,
+          phone: member.phone,
+          role: member.role,
+          status: member.status,
+          permissions: member.permissions,
+          lastActive: member.lastActive ? new Date(member.lastActive).toISOString() : undefined,
+          createdAt: new Date(member.createdAt).toISOString(),
+        }));
+
+        return jsonResponse({ success: true, members: transformedMembers }, corsHeaders);
+      } catch (error) {
+        return jsonResponse(
+          { error: 'Failed to load team members', message: String(error) },
+          corsHeaders,
+          500
+        );
+      }
+    }
+
+    // GET /admin/team-members/:id - Get team member by ID
+    if (url.pathname.match(/^\/admin\/team-members\/[^/]+$/) && request.method === 'GET') {
+      try {
+        const id = url.pathname.split('/').pop();
+        if (!id) {
+          return jsonResponse({ error: 'Invalid member ID' }, corsHeaders, 400);
+        }
+
+        const member = await teamMemberDb.getMember(id);
+        if (!member) {
+          return jsonResponse({ error: 'Team member not found' }, corsHeaders, 404);
+        }
+
+        const transformedMember = {
+          id: member.id,
+          name: member.name,
+          email: member.email,
+          phone: member.phone,
+          role: member.role,
+          status: member.status,
+          permissions: member.permissions,
+          lastActive: member.lastActive ? new Date(member.lastActive).toISOString() : undefined,
+          createdAt: new Date(member.createdAt).toISOString(),
+        };
+
+        return jsonResponse({ success: true, member: transformedMember }, corsHeaders);
+      } catch (error) {
+        return jsonResponse(
+          { error: 'Failed to get team member', message: String(error) },
+          corsHeaders,
+          500
+        );
+      }
+    }
+
+    // POST /admin/team-members - Create team member
+    if (url.pathname === '/admin/team-members' && request.method === 'POST') {
+      try {
+        const body = await request.json() as {
+          name: string;
+          email: string;
+          phone?: string;
+          role: string;
+          status?: 'active' | 'inactive' | 'pending';
+          permissions?: string[];
+        };
+
+        if (!body.name || !body.email || !body.role) {
+          return jsonResponse(
+            { error: 'Missing required fields: name, email, role' },
+            corsHeaders,
+            400
+          );
+        }
+
+        const member = await teamMemberDb.createMember({
+          name: body.name,
+          email: body.email,
+          phone: body.phone,
+          role: body.role,
+          status: body.status || 'active',
+          permissions: body.permissions || ['read'],
+        });
+
+        const transformedMember = {
+          id: member.id,
+          name: member.name,
+          email: member.email,
+          phone: member.phone,
+          role: member.role,
+          status: member.status,
+          permissions: member.permissions,
+          lastActive: member.lastActive ? new Date(member.lastActive).toISOString() : undefined,
+          createdAt: new Date(member.createdAt).toISOString(),
+        };
+
+        return jsonResponse({ success: true, member: transformedMember }, corsHeaders, 201);
+      } catch (error) {
+        return jsonResponse(
+          { error: 'Failed to create team member', message: String(error) },
+          corsHeaders,
+          500
+        );
+      }
+    }
+
+    // PUT /admin/team-members/:id - Update team member
+    if (url.pathname.match(/^\/admin\/team-members\/[^/]+$/) && request.method === 'PUT') {
+      try {
+        const id = url.pathname.split('/').pop();
+        if (!id) {
+          return jsonResponse({ error: 'Invalid member ID' }, corsHeaders, 400);
+        }
+
+        const body = await request.json() as Partial<{
+          name: string;
+          email: string;
+          phone?: string;
+          role: string;
+          status: 'active' | 'inactive' | 'pending';
+          permissions: string[];
+          lastActive: string;
+        }>;
+
+        const updates: Partial<{
+          name: string;
+          email: string;
+          phone?: string;
+          role: string;
+          status: 'active' | 'inactive' | 'pending';
+          permissions: string[];
+          lastActive?: number;
+        }> = {};
+
+        if (body.name !== undefined) updates.name = body.name;
+        if (body.email !== undefined) updates.email = body.email;
+        if (body.phone !== undefined) updates.phone = body.phone;
+        if (body.role !== undefined) updates.role = body.role;
+        if (body.status !== undefined) updates.status = body.status;
+        if (body.permissions !== undefined) updates.permissions = body.permissions;
+        if (body.lastActive !== undefined) {
+          updates.lastActive = new Date(body.lastActive).getTime();
+        }
+
+        const member = await teamMemberDb.updateMember(id, updates);
+        if (!member) {
+          return jsonResponse({ error: 'Team member not found' }, corsHeaders, 404);
+        }
+
+        const transformedMember = {
+          id: member.id,
+          name: member.name,
+          email: member.email,
+          phone: member.phone,
+          role: member.role,
+          status: member.status,
+          permissions: member.permissions,
+          lastActive: member.lastActive ? new Date(member.lastActive).toISOString() : undefined,
+          createdAt: new Date(member.createdAt).toISOString(),
+        };
+
+        return jsonResponse({ success: true, member: transformedMember }, corsHeaders);
+      } catch (error) {
+        return jsonResponse(
+          { error: 'Failed to update team member', message: String(error) },
+          corsHeaders,
+          500
+        );
+      }
+    }
+
+    // DELETE /admin/team-members/:id - Delete team member
+    if (url.pathname.match(/^\/admin\/team-members\/[^/]+$/) && request.method === 'DELETE') {
+      try {
+        const id = url.pathname.split('/').pop();
+        if (!id) {
+          return jsonResponse({ error: 'Invalid member ID' }, corsHeaders, 400);
+        }
+
+        const deleted = await teamMemberDb.deleteMember(id);
+        if (!deleted) {
+          return jsonResponse({ error: 'Team member not found' }, corsHeaders, 404);
+        }
+
+        return jsonResponse({ success: true, message: 'Team member deleted' }, corsHeaders);
+      } catch (error) {
+        return jsonResponse(
+          { error: 'Failed to delete team member', message: String(error) },
+          corsHeaders,
+          500
+        );
+      }
+    }
+  }
+
+  // POST /admin/evidence/export - Export timeline
+  if (url.pathname === '/admin/evidence/export' && request.method === 'POST') {
       try {
         const body = await request.json() as {
           investigationId?: string;

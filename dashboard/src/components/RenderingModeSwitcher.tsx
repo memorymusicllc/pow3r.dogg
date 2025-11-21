@@ -43,7 +43,7 @@ export default function RenderingModeSwitcher() {
   const { renderingMode, setRenderingMode } = useConfigStore();
 
   return (
-    <div className="flex items-center gap-2 bg-true-black-bg theme-light:bg-light-bg theme-glass:bg-glass-bg border border-true-black-border theme-light:border-light-border theme-glass:border-glass-border rounded-lg p-1">
+    <div className="flex items-center gap-1">
       {renderingModes.map((mode) => {
         const Icon = mode.icon;
         const isActive = renderingMode === mode.id;
@@ -51,15 +51,15 @@ export default function RenderingModeSwitcher() {
           <button
             key={mode.id}
             onClick={() => setRenderingMode(mode.id)}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm transition-colors ${
+            className={`p-2 rounded transition-colors ${
               isActive
-                ? 'bg-true-black-accent theme-light:bg-light-accent theme-glass:bg-glass-accent text-white'
+                ? 'text-true-black-accent theme-light:text-light-accent theme-glass:text-glass-accent'
                 : 'text-true-black-text-muted theme-light:text-light-text-muted theme-glass:text-glass-text-muted hover:text-true-black-text theme-light:hover:text-light-text theme-glass:hover:text-glass-text'
             }`}
             title={mode.description}
+            aria-label={mode.label}
           >
-            <Icon className="w-4 h-4" />
-            <span className="hidden sm:inline">{mode.label}</span>
+            <Icon className="w-5 h-5" />
           </button>
         );
       })}

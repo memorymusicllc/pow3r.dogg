@@ -11,6 +11,8 @@ export interface ApiError {
 export class ApiClient {
   private baseUrl: string;
   private authToken: string | null = null;
+  private authFailureCount: number = 0;
+  private readonly MAX_AUTH_FAILURES = 3;
 
   constructor(baseUrl: string = API_BASE) {
     this.baseUrl = baseUrl;
@@ -22,6 +24,8 @@ export class ApiClient {
     if (typeof window !== 'undefined') {
       try {
         this.authToken = await pow3rPassService.getAuthToken();
+        // Reset failure count on successful auth
+        this.authFailureCount = 0;
       } catch (error) {
         console.warn('Failed to get auth token from Pow3r Pass:', error);
         // Fallback to localStorage
@@ -49,6 +53,11 @@ export class ApiClient {
       headers,
     });
 
+    // Reset failure count on success (before checking for errors)
+    if (response.ok) {
+      this.authFailureCount = 0;
+    }
+
     if (!response.ok) {
       const errorText = await response.text().catch(() => 'Unknown error');
       const error: ApiError = {
@@ -56,8 +65,20 @@ export class ApiClient {
         status: response.status,
       };
       
-      // Handle 401 Unauthorized - trigger auth check
+      // Handle 401 Unauthorized - trigger auth check but limit retries
       if (response.status === 401) {
+        this.authFailureCount++;
+        if (this.authFailureCount >= this.MAX_AUTH_FAILURES) {
+          // Stop making requests after too many auth failures
+          console.warn('Too many authentication failures. Stopping API requests.');
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('auth-required', { 
+              detail: { message: 'Authentication required. Please authenticate via Pow3r Pass.', stopRetries: true }
+            }));
+          }
+          // Don't throw error, return empty response instead to prevent retry loops
+          return {} as T;
+        }
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('auth-required', { 
             detail: { message: 'Authentication required. Please authenticate via Pow3r Pass.' }
@@ -96,6 +117,11 @@ export class ApiClient {
       body: formData,
     });
 
+    // Reset failure count on success (before checking for errors)
+    if (response.ok) {
+      this.authFailureCount = 0;
+    }
+
     if (!response.ok) {
       const errorText = await response.text().catch(() => 'Unknown error');
       const error: ApiError = {
@@ -103,8 +129,20 @@ export class ApiClient {
         status: response.status,
       };
       
-      // Handle 401 Unauthorized - trigger auth check
+      // Handle 401 Unauthorized - trigger auth check but limit retries
       if (response.status === 401) {
+        this.authFailureCount++;
+        if (this.authFailureCount >= this.MAX_AUTH_FAILURES) {
+          // Stop making requests after too many auth failures
+          console.warn('Too many authentication failures. Stopping API requests.');
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('auth-required', { 
+              detail: { message: 'Authentication required. Please authenticate via Pow3r Pass.', stopRetries: true }
+            }));
+          }
+          // Don't throw error, return empty response instead to prevent retry loops
+          return {} as T;
+        }
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('auth-required', { 
             detail: { message: 'Authentication required. Please authenticate via Pow3r Pass.' }
@@ -116,6 +154,10 @@ export class ApiClient {
     }
 
     return response.json() as Promise<T>;
+  }
+
+  async delete<T>(endpoint: string): Promise<T> {
+    return this.request<T>(endpoint, { method: 'DELETE' });
   }
 
   setAuthToken(token: string) {

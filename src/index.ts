@@ -19,6 +19,8 @@ import { handleShorten } from './index-shorten-handler';
 import { handleCommunication } from './index-communication-handler';
 import { handleTelegramBot } from './index-telegram-bot';
 import { handleAdmin } from './index-admin-handler';
+import { handleFiles } from './index-file-handler';
+import { handleMedia } from './index-media-handler';
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -265,7 +267,7 @@ export default {
       // React Dashboard - serve from R2 or fallback
       if (url.pathname === '/admin' || url.pathname.startsWith('/admin/')) {
         // Check if it's an API endpoint first
-        if (url.pathname.startsWith('/admin/api/') || url.pathname.match(/^\/admin\/(attackers|analytics|osint|evidence|files|knowledge-graph)/)) {
+        if (url.pathname.startsWith('/admin/api/') || url.pathname.match(/^\/admin\/(attackers|analytics|osint|evidence|files|knowledge-graph|team-members)/)) {
           // Let handleAdmin handle API endpoints
           // This will be handled below
         } else {
@@ -546,8 +548,18 @@ export default {
       }
 
       // URL Shortening endpoints
-      if (url.pathname.startsWith('/api/shorten') || url.pathname.startsWith('/s/')) {
+      if (url.pathname.startsWith('/api/shorten') || url.pathname.startsWith('/s/') || url.pathname.startsWith('/api/links')) {
         return await handleShorten(request, env, ctx, corsHeaders);
+      }
+
+      // File Tracker endpoints
+      if (url.pathname.startsWith('/api/files')) {
+        return await handleFiles(request, env, ctx, corsHeaders);
+      }
+
+      // Media Generation endpoints
+      if (url.pathname.startsWith('/api/media')) {
+        return await handleMedia(request, env, ctx, corsHeaders);
       }
 
       // Communication endpoints

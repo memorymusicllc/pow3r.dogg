@@ -105,13 +105,21 @@ export async function fetchPow3rConfig(): Promise<Pow3rConfig> {
   }
 
   try {
-    const response = await fetch(`${MCP_CONFIG_URL}/config/pow3r-v4`);
+    const response = await fetch(`${MCP_CONFIG_URL}config/pow3r-v4`, {
+      // Add timeout and don't retry on 404
+      signal: AbortSignal.timeout(5000),
+    });
     if (!response.ok) {
+      // Don't throw on 404, just use defaults
+      if (response.status === 404) {
+        throw new Error('Config not found, using defaults');
+      }
       throw new Error(`Failed to fetch config: ${response.statusText}`);
     }
     cachedConfig = await response.json() as Pow3rConfig;
     return cachedConfig;
   } catch (error) {
+    // Silently use defaults if config fetch fails
     console.warn('Failed to fetch Pow3r config, using defaults:', error);
     // Return default config if fetch fails
     return {

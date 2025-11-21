@@ -4,7 +4,7 @@
 
 1. **Cloudflare Account** with Workers, D1, R2, KV, and Vectorize enabled
 2. **Wrangler CLI** authenticated with proper permissions
-3. **GitHub Repository** (already set up at: https://github.com/memorymusicllc/pow3r.dogg)
+3. **GitHub Repository** (already set up at: https://github.com/memorymusicllc/pow3r.ddog)
 
 ## Step-by-Step Setup
 

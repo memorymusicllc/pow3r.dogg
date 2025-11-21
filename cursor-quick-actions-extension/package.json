@@ -1,0 +1,132 @@
+{
+  "name": "cursor-quick-actions",
+  "displayName": "Cursor Quick Actions",
+  "description": "Custom widget panel with 8 action buttons for common development tasks",
+  "version": "1.0.0",
+  "publisher": "pow3r",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "cursor-quick-actions",
+          "title": "Quick Actions",
+          "icon": "$(rocket)"
+        }
+      ]
+    },
+    "views": {
+      "cursor-quick-actions": [
+        {
+          "id": "quickActionsPanel",
+          "name": "Quick Actions",
+          "type": "webview"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "quickActions.deploy",
+        "title": "Deploy",
+        "icon": "$(rocket)"
+      },
+      {
+        "command": "quickActions.organize",
+        "title": "Organize Repo",
+        "icon": "$(folder)"
+      },
+      {
+        "command": "quickActions.review",
+        "title": "Code Review",
+        "icon": "$(search)"
+      },
+      {
+        "command": "quickActions.plan",
+        "title": "Generate Plan",
+        "icon": "$(file-code)"
+      },
+      {
+        "command": "quickActions.custom1",
+        "title": "Custom 1"
+      },
+      {
+        "command": "quickActions.custom2",
+        "title": "Custom 2"
+      },
+      {
+        "command": "quickActions.custom3",
+        "title": "Custom 3"
+      },
+      {
+        "command": "quickActions.custom4",
+        "title": "Custom 4"
+      },
+      {
+        "command": "quickActions.openSettings",
+        "title": "Configure Quick Actions",
+        "icon": "$(settings-gear)"
+      }
+    ],
+    "configuration": {
+      "title": "Quick Actions",
+      "properties": {
+        "quickActions.mcp.ddog": {
+          "type": "string",
+          "default": "",
+          "description": "ddog MCP server URL"
+        },
+        "quickActions.mcp.xSystems": {
+          "type": "string",
+          "default": "",
+          "description": "x-systems MCP server URL"
+        },
+        "quickActions.mcp.xPlugin": {
+          "type": "string",
+          "default": "",
+          "description": "x-plugin MCP server URL"
+        },
+        "quickActions.customPrompts.custom1": {
+          "type": "string",
+          "default": "",
+          "description": "Custom button 1 prompt"
+        },
+        "quickActions.customPrompts.custom2": {
+          "type": "string",
+          "default": "",
+          "description": "Custom button 2 prompt"
+        },
+        "quickActions.customPrompts.custom3": {
+          "type": "string",
+          "default": "",
+          "description": "Custom button 3 prompt"
+        },
+        "quickActions.customPrompts.custom4": {
+          "type": "string",
+          "default": "",
+          "description": "Custom button 4 prompt"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.74.0",
+    "@types/node": "^18.0.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {}
+}
+

@@ -25,7 +25,11 @@
     "deploy:e2e": "./scripts/deploy-e2e-tests.sh",
     "test:e2e:all": "playwright test --project=chromium --reporter=html,list",
     "test:e2e:migration": "playwright test tests/migration-e2e.spec.ts --project=chromium --reporter=html,list",
-    "test:e2e:dashboard": "playwright test tests/dashboard.spec.ts --project=chromium --reporter=html,list"
+    "test:e2e:dashboard": "playwright test tests/dashboard.spec.ts --project=chromium --reporter=html,list",
+    "test:guardian": "playwright test tests/guardian-compliance.spec.ts --project=chromium --reporter=html,list",
+    "guardian:deploy:loop": "./scripts/guardian-deploy-loop.sh",
+    "guardian:monitor": "./scripts/monitor-guardian-tests.sh",
+    "verify:media": "tsx scripts/verify-media-generation.ts"
   },
   "keywords": [
     "fraud-detection",

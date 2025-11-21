@@ -45,9 +45,53 @@ export default function DashboardOverview() {
   const chartColors = (themeConfig?.chart_colors as string[]) || ['#3b82f6', '#ef4444', '#f59e0b', '#10b981'];
 
   useEffect(() => {
-    loadOverview();
-    const interval = setInterval(loadOverview, 60000);
-    return () => clearInterval(interval);
+    let mounted = true;
+    let intervalId: NodeJS.Timeout | null = null;
+    let retryCount = 0;
+    let loadSuccessful = false;
+    const MAX_RETRIES = 2;
+    
+    const loadWithRetry = async () => {
+      if (!mounted) return;
+      try {
+        await loadOverview();
+        retryCount = 0; // Reset on success
+        loadSuccessful = true; // Mark as successful
+        
+        // Only set interval if load was successful and not already set
+        if (mounted && loadSuccessful && !intervalId) {
+          intervalId = setInterval(() => {
+            if (mounted) loadOverview();
+          }, 60000);
+        }
+      } catch (err) {
+        loadSuccessful = false; // Mark as failed
+        retryCount++;
+        // If auth error or too many retries, don't retry automatically
+        if (err instanceof Error && (err.message.includes('401') || retryCount >= MAX_RETRIES)) {
+          console.warn('Authentication required or too many failures. Stopping automatic refresh.');
+          return;
+        }
+      }
+    };
+    
+    loadWithRetry();
+    
+    // Listen for auth-required events to stop retries
+    const handleAuthRequired = (e: CustomEvent) => {
+      if (e.detail?.stopRetries) {
+        if (intervalId) clearInterval(intervalId);
+        intervalId = null;
+        loadSuccessful = false;
+      }
+    };
+    window.addEventListener('auth-required', handleAuthRequired as EventListener);
+    
+    return () => {
+      mounted = false;
+      if (intervalId) clearInterval(intervalId);
+      window.removeEventListener('auth-required', handleAuthRequired as EventListener);
+    };
   }, []);
 
   const loadOverview = async () => {
